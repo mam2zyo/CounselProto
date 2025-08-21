@@ -281,23 +281,8 @@
 //                 viewBox="0 0 24 24"
 //                 stroke="currentColor"
 //               >
-//                 <path
-//                   strokeLinecap="round"
-//                   strokeLinejoin="round"
-//                   strokeWidth="2"
-//                   d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-//                 />
-//               </svg>{" "}
-//               Chat 2: Spring Boot 프로젝트 구조
-//             </a>
-//           </li>
-//         </ul>
-//       </div>
-//     </div>
-//   );
-// }
+//   
 
-// export default App;
 import React, { useState, useEffect, useRef } from "react";
 
 // === 인증 관련 컴포넌트들 (기존 파일에 통합) ===
@@ -350,7 +335,8 @@ const AuthScreen = ({ onLoginSuccess }) => {
         const email = e.target.email.value;
         const password = e.target.password.value;
 
-        const url = isLogin ? 'http://localhost:8080/api/auth/login' : 'http://localhost:8080/api/auth/signup';
+        // === 프록시를 사용하도록 절대 경로 대신 상대 경로로 수정 ===
+        const url = isLogin ? '/api/auth/login' : '/api/auth/signup';
         const method = 'POST';
         const body = JSON.stringify({ email, password });
 
@@ -361,23 +347,27 @@ const AuthScreen = ({ onLoginSuccess }) => {
                 body
             });
             
-            const data = await response.json();
-
             if (response.ok) {
                 if (isLogin) {
+                    const data = await response.json(); // 로그인 성공 시 JSON 파싱
                     localStorage.setItem('accessToken', data.accessToken);
                     showMessage('로그인 성공!', 'success');
                     onLoginSuccess();
                 } else {
+                    // 회원가입 성공 시 텍스트 응답 처리
+                    const textData = await response.text(); 
+                    console.log('회원가입 성공 응답:', textData);
                     showMessage('회원가입 성공! 이제 로그인해주세요.', 'success');
                     setIsLogin(true);
                 }
             } else {
-                const error = data.message || '요청 실패';
+                const errorData = await response.json();
+                const error = errorData.message || '요청 실패';
                 showMessage(error, 'error');
             }
         } catch (error) {
-            showMessage(`네트워크 오류: ${error.message}`, 'error');
+            console.error('API 호출 중 오류 발생:', error);
+            showMessage(`네트워크 오류 또는 서버 응답 형식 오류: ${error.message}`, 'error');
         }
     };
 
