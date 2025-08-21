@@ -74,7 +74,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorizeRequests ->
                         authorizeRequests
                                 // '/api/auth/**' 경로로 들어오는 모든 요청(회원가입, 로그인)은 인증 없이 허용합니다.
-                                .requestMatchers("/api/auth/**").permitAll()
+                                //.requestMatchers("/api/chat").permitAll()
+                                .requestMatchers("/", "/index.html", "/api/chat").permitAll()
                                 // 위에서 허용한 경로를 제외한 나머지 모든 요청은 반드시 인증이 필요합니다.
                                 .anyRequest().authenticated()
                 )
