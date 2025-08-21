@@ -1,5 +1,6 @@
 package io.notfound.counsel_back.conversation.entity;
 
+import io.notfound.counsel_back.user.entity.User;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
