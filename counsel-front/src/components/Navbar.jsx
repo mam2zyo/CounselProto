@@ -1,6 +1,11 @@
+import { Link } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+
 function Navbar() {
+  const { isLoggedIn, logout } = useAuth();
+
   return (
-    <div className="navbar bg-base-200">
+    <div className="navbar bg-base-100">
       <div className="navbar-start">
         <label
           htmlFor="my-drawer"
@@ -22,9 +27,18 @@ function Navbar() {
         </label>
       </div>
       <div className="navbar-center">
-        <a className="btn btn-ghost text-xl">마음소리</a>
+        <a className="btn btn-ghost text-xl">고민 상담</a>
       </div>
       <div className="navbar-end gap-2">
+        {isLoggedIn ? (
+          <button onClick={logout} className="btn btn-ghost">
+            로그아웃
+          </button>
+        ) : (
+          <Link to="/login" className="btn btn-ghost">
+            로그인
+          </Link>
+        )}
         <label className="swap swap-rotate">
           <input type="checkbox" className="theme-controller" value="dark" />
           <svg

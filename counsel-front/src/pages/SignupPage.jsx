@@ -1,23 +1,22 @@
-// src/pages/LoginPage.jsx
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { login as loginApi } from "../api/auth";
-import { useAuth } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { signup } from "../api/auth";
 
-function LoginPage() {
+function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     try {
-      const response = await loginApi(email, password);
-      login(response.data.accessToken);
+      const response = await signup(email, password);
+      localStorage.setItem("accessToken", response.data.accessToken);
+      navigate("/");
     } catch (err) {
-      setError("로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
+      setError("회원가입에 실패했습니다. 이메일 혹은 비밀번호를 확인해주세요.");
       console.error(err);
     }
   };
@@ -37,7 +36,7 @@ function LoginPage() {
               </label>
               <input
                 type="email"
-                placeholder="hello@exampl.com"
+                placeholder="hello@example.com"
                 className="input input-bordered"
                 required
                 value={email}
@@ -60,13 +59,8 @@ function LoginPage() {
             {error && <p className="text-error text-sm">{error}</p>}
             <div className="form-control mt-6">
               <button type="submit" className="btn btn-primary">
-                로그인
+                회원가입
               </button>
-            </div>
-            <div className="text-center mt-4">
-              <Link to="/signup" className="link link-hover">
-                아직 회원이 아니신가요?
-              </Link>
             </div>
           </form>
         </div>
@@ -75,4 +69,4 @@ function LoginPage() {
   );
 }
 
-export default LoginPage;
+export default SignupPage;
