@@ -1,4 +1,7 @@
+// src/pages/ChatPage.jsx
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import ChatMessage from "../components/ChatMessage";
@@ -10,6 +13,8 @@ function ChatPage() {
   const [input, setInput] = useState("");
   const [chatMode, setChatMode] = useState("text"); // 'text', 'voiceInput', 'voiceChat'
 
+  const { isLoggedIn } = useAuth();
+  const navigate = useNavigate();
   const mainContentRef = useRef(null);
 
   useEffect(() => {
@@ -46,6 +51,10 @@ function ChatPage() {
   };
 
   const handleModeSwitch = (mode) => {
+    if (!isLoggedIn) {
+      navigate("/login");
+      return;
+    }
     setChatMode(mode);
     if (mode === "voiceChat") {
       setMessages([]);
