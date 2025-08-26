@@ -31,7 +31,7 @@ function ChatPage() {
 
     const newUserMessage = {
       id: Date.now(),
-      text: input,
+      text: userMessageText,
       sender: "user",
     };
 
@@ -46,7 +46,7 @@ function ChatPage() {
         text: response.data.aiMessage,
         sender: "ai",
       };
-      setMessages((prev) => [...prev, newAiMessage.text]);
+      setMessages((prev) => [...prev, newAiMessage]);
 
       if (chatMode === "voiceChat") {
         console.log("TTS 재생 (음성 채팅 모드):", newAiMessage.text);
@@ -87,7 +87,8 @@ function ChatPage() {
     }
 
     return messages.map((message) => (
-      <ChatMessage key={message.id} message={message} />
+      // <ChatMessage key={message.id} message={message} />
+      <ChatMessage message={message} />
     ));
   };
 
