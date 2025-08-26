@@ -26,7 +26,6 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     setAccessToken(null);
-    navigate("login");
   };
 
   const value = { isLoggedIn, accessToken, login, logout };
