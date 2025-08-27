@@ -7,6 +7,7 @@ import Sidebar from "../components/Sidebar";
 import ChatMessage from "../components/ChatMessage";
 import ChatInput from "../components/ChatInput";
 import { VoiceChatIcon } from "../components/Icons";
+import { sendMessage as sendMessageApi } from "../api/chat";
 
 function ChatPage() {
   const [messages, setMessages] = useState([]);
@@ -23,23 +24,26 @@ function ChatPage() {
     }
   }, [messages, chatMode]);
 
-  const handleSendMessage = () => {
-    if (input.trim() === "") return;
+  const handleSendMessage = async () => {
+    if (input.trim() === "" || !isLoggedIn) return;
+
+    const userMessageText = input.trim();
 
     const newUserMessage = {
       id: Date.now(),
-      text: input,
+      text: userMessageText,
       sender: "user",
     };
 
     setMessages((prev) => [...prev, newUserMessage]);
-
     setInput("");
 
-    setTimeout(() => {
+    try {
+      const response = await sendMessageApi(userMessageText);
+
       const newAiMessage = {
         id: Date.now() + 1,
-        text: `'${input}'에 대한 응답입니다. 지금은 정해진 답변만 할 수 있어요.`,
+        text: response.data.aiMessage,
         sender: "ai",
       };
       setMessages((prev) => [...prev, newAiMessage]);
@@ -47,7 +51,17 @@ function ChatPage() {
       if (chatMode === "voiceChat") {
         console.log("TTS 재생 (음성 채팅 모드):", newAiMessage.text);
       }
-    }, 1000);
+    } catch (error) {
+      console.error("Chat API Error:", error);
+
+      const errorAiMessage = {
+        id: Date.now() + 1,
+        text: "답변을 생성하는 중 오류가 발생했습니다.",
+        sender: "ai",
+        isError: true,
+      };
+      setMessages((prev) => [...prev, errorAiMessage]);
+    }
   };
 
   const handleModeSwitch = (mode) => {
@@ -73,7 +87,8 @@ function ChatPage() {
     }
 
     return messages.map((message) => (
-      <ChatMessage key={message.id} message={message} />
+      // <ChatMessage key={message.id} message={message} />
+      <ChatMessage message={message} />
     ));
   };
 
