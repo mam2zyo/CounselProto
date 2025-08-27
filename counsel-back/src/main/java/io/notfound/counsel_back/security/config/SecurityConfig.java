@@ -1,12 +1,12 @@
 package io.notfound.counsel_back.security.config;
 
 import io.notfound.counsel_back.security.filter.JwtAuthenticationFilter;
+import io.notfound.counsel_back.security.service.OAuth2UserService;
+import io.notfound.counsel_back.security.handler.OAuth2LoginSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -15,53 +15,97 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.List;
+
+/**
+ * Spring Security의 전반적인 보안 설정을 담당하는 클래스입니다.
+ * JWT 필터, OAuth2 로그인, CORS 등을 설정합니다.
+ */
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final OAuth2UserService oAuth2UserService;
+    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
 
+    /**
+     * HTTP 보안 필터 체인을 구성하는 빈(Bean)입니다.
+     *
+     * @param http HttpSecurity 객체
+     * @return 설정된 SecurityFilterChain 객체
+     * @throws Exception 예외 발생 시
+     */
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                // CSRF(Cross-Site Request Forgery) 보호 비활성화
+                .csrf(AbstractHttpConfigurer::disable)
+                // 세션 관리 전략을 STATELESS(세션 사용 안 함)로 설정
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // CORS 설정 적용
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // HTTP 요청에 대한 접근 권한 설정
+                .authorizeHttpRequests(authorize -> authorize
+                        // 일반 로그인 및 회원가입 관련 URL 접근 허용
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/signup").permitAll()
+                        // OAuth2 로그인 관련 URL 접근 허용
+                        .requestMatchers(HttpMethod.GET, "/oauth2/authorization/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/login/oauth2/code/**").permitAll()
+                        // 토큰 재발급 URL 접근 허용
+                        .requestMatchers(HttpMethod.POST, "/api/auth/reissue").permitAll()
+                        // 그 외 모든 요청은 인증된 사용자만 접근 가능
+                        .anyRequest().authenticated()
+                )
+                // JWT 필터를 UsernamePasswordAuthenticationFilter 이전에 추가
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // OAuth2 로그인 설정
+                .oauth2Login(oauth2 -> oauth2
+                        // OAuth2 인증 후 사용자 정보를 처리하는 서비스 지정
+                        .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService))
+                        // 로그인 성공 핸들러 지정
+                        .successHandler(oAuth2LoginSuccessHandler)
+                );
+
+        return http.build();
+    }
+
+    /**
+     * 비밀번호를 안전하게 암호화하기 위한 PasswordEncoder 빈을 등록합니다.
+     *
+     * @return BCryptPasswordEncoder 객체
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * CORS(Cross-Origin Request Sharing) 설정 빈입니다.
+     * 프론트엔드와 백엔드 간의 안전한 통신을 위해 허용할 출처, 메서드 등을 정의합니다.
+     *
+     * @return CORS 설정 소스
+     */
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
-    }
-
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                // 1. CSRF, 폼 로그인, HTTP Basic 인증을 비활성화합니다.
-                // JWT 기반의 REST API 서버이므로 세션을 사용하지 않고, 불필요한 보안 기능을 끕니다.
-                .csrf(AbstractHttpConfigurer::disable)
-                .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable)
-
-                // 2. 세션 관리 정책을 STATELESS(상태 없음)로 설정합니다.
-                // 서버가 클라이언트의 상태를 저장하지 않고, 모든 요청을 독립적으로 처리합니다.
-                .sessionManagement(sessionManagement ->
-                        sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // HTTP 요청 인가 설정
-                .authorizeHttpRequests(auth -> auth
-
-                        // 특정 POST 엔드포인트 허용
-                        .requestMatchers(HttpMethod.POST,
-                                "/",
-                                "/api/auth/**",
-                                "/oauth2/**",
-                                "/login/oauth2/code/**",
-                                "/api/chat/**")
-                        .permitAll()
-
-                        // 나머지 모든 요청은 인증 필요
-                        .anyRequest().authenticated());
-
-        return http.build();
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // 모든 출처(*)에서 요청 허용
+        configuration.setAllowedOrigins(List.of("*"));
+        // 모든 HTTP 메서드(GET, POST, PUT, DELETE 등) 허용
+        configuration.setAllowedMethods(List.of("*"));
+        // 모든 헤더 허용
+        configuration.setAllowedHeaders(List.of("*"));
+        // 자격 증명(쿠키, HTTP 인증 등) 사용 허용
+        configuration.setAllowCredentials(true);
+        // CORS 설정을 URL 패턴에 적용
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }
