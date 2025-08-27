@@ -52,7 +52,10 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 // HTTP 요청에 대한 접근 권한 설정
                 .authorizeHttpRequests(authorize -> authorize
-                        // OAuth2 로그인과 관련된 URL은 모두 접근을 허용
+                        // 일반 로그인 및 회원가입 관련 URL 접근 허용
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/signup").permitAll()
+                        // OAuth2 로그인 관련 URL 접근 허용
                         .requestMatchers(HttpMethod.GET, "/oauth2/authorization/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/login/oauth2/code/**").permitAll()
                         // 토큰 재발급 URL 접근 허용
