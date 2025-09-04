@@ -2,6 +2,7 @@ package io.notfound.counsel_back.security.controller;
 
 import io.notfound.counsel_back.security.dto.LoginRequestDto;
 import io.notfound.counsel_back.security.dto.LoginResponseDto;
+import io.notfound.counsel_back.security.jwt.JwtTokenProvider;
 import io.notfound.counsel_back.security.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 /**
  * 인증(Authentication) 관련 API를 처리하는 컨트롤러입니다.
@@ -21,7 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/auth") // 이 컨트롤러의 모든 요청은 /api/auth 경로로 시작합니다.
 @RequiredArgsConstructor // final 필드에 대한 생성자를 자동 생성하여 의존성을 주입합니다.
 public class AuthController {
-    private final AuthService authService; // 인증 관련 비즈니스 로직을 처리하는 서비스 클래스
+    private final AuthService authService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     /**
      * 회원가입 API
@@ -47,12 +50,21 @@ public class AuthController {
 
     /**
      * 로그아웃 API
-     * 클라이언트가 토큰을 삭제하도록 유도하는 엔드포인트입니다.
+     * 클라이언트가 보낸 액세스 토큰을 사용하여 서버 측에서 리프레시 토큰을 무효화합니다.
+     * @param authHeader HTTP 요청 헤더의 'Authorization' 값 (액세스 토큰 포함)
      * @return 성공 시 200 OK 상태 코드와 메시지를 반환합니다.
      */
     @PostMapping("/logout")
-    public ResponseEntity<String> logout() {
-        // 서버 측에서 특별한 로직은 없으며, 클라이언트가 토큰을 제거하는 방식입니다.
-        return ResponseEntity.ok("로그아웃이 완료되었습니다. 클라이언트에서 토큰을 삭제해주세요.");
+    public ResponseEntity<String> logout(@RequestHeader("Authorization") String authHeader) {
+        // 1. 헤더에서 'Bearer ' 부분을 제외한 순수 토큰 값을 추출합니다.
+        String accessToken = authHeader.substring("Bearer ".length());
+
+        // 2. 액세스 토큰에서 사용자 이메일을 추출합니다.
+        String email = jwtTokenProvider.getUserId(accessToken);
+
+        // 3. AuthService를 통해 데이터베이스에 저장된 리프레시 토큰을 삭제합니다.
+        authService.logout(email);
+
+        return ResponseEntity.ok("로그아웃이 완료되었습니다. 서버의 리프레시 토큰이 무효화되었습니다.");
     }
 }
