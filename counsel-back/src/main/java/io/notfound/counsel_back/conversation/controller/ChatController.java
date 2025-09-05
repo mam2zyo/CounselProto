@@ -4,6 +4,8 @@ import io.notfound.counsel_back.conversation.dto.ChatRequest;
 import io.notfound.counsel_back.conversation.dto.ChatResponse;
 import io.notfound.counsel_back.conversation.service.ChatService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,9 +19,10 @@ public class ChatController {
     private final ChatService chatService;
 
     @PostMapping
-    public ChatResponse chat(@RequestBody ChatRequest request) {
-        // GeminiService를 호출하여 AI의 답변을 받아옴
-        String aiMessage = chatService.getChatCompletion(request.getMessage());
-        return new ChatResponse(aiMessage);
+    public ChatResponse chat(@RequestBody ChatRequest request, @AuthenticationPrincipal UserDetails userDetails) {
+        String userEmail = userDetails.getUsername();
+        ChatResponse response = chatService.getChatCompletion(request, userEmail);
+
+        return response;
     }
 }

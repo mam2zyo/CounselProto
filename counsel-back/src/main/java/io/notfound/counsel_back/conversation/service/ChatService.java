@@ -1,78 +1,101 @@
 package io.notfound.counsel_back.conversation.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.google.genai.Client;
+import com.google.genai.types.GenerateContentResponse;
+import io.notfound.counsel_back.conversation.dto.ChatRequest;
+import io.notfound.counsel_back.conversation.dto.ChatResponse;
+import io.notfound.counsel_back.conversation.entity.ChatMessage;
+import io.notfound.counsel_back.conversation.entity.Conversation;
+import io.notfound.counsel_back.conversation.entity.Sender;
 import io.notfound.counsel_back.conversation.repository.ChatMessageRepository;
 import io.notfound.counsel_back.conversation.repository.ConversationRepository;
+import io.notfound.counsel_back.user.entity.User;
 import io.notfound.counsel_back.user.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.Map;
-
+@Slf4j
 @Service
-@Transactional
 public class ChatService {
 
     private final UserRepository userRepository;
     private final ConversationRepository conversationRepository;
     private final ChatMessageRepository chatMessageRepository;
-    private final String apiKey;
-    private final String model;
-    private final WebClient webClient;
+    private final Client geminiClient;
 
     public ChatService(
             UserRepository userRepository,
             ConversationRepository conversationRepository,
-            ChatMessageRepository chatMessageRepository,
-            @Value("${gemini.api.key}") String apiKey,
-            @Value("${gemini.model}") String model,
-            WebClient.Builder webClientBuilder) {
+            ChatMessageRepository chatMessageRepository) {
         this.userRepository = userRepository;
         this.conversationRepository = conversationRepository;
         this.chatMessageRepository = chatMessageRepository;
-        this.apiKey = apiKey;
-        this.model = model;
-        this.webClient = webClientBuilder
-                .baseUrl("https://generativelanguage.googleapis.com/v1beta/models")
-                .build();
+        this.geminiClient = new Client();
     }
 
-    public String getChatCompletion(String prompt) {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException("Invalid api key.");
+    @Transactional
+    public ChatResponse getChatCompletion(ChatRequest request, String userEmail) {
+        String userMessage = request.getMessage();
+
+        Conversation conversation = getOrCreateConversation(request.getConversationId(), userEmail);
+
+        // 사용자 메시지 저장
+        ChatMessage userChatMessage = saveUserMessage(conversation, userMessage);
+
+        // AI 응답 생성 및 저장
+        ChatMessage aiChatMessage = generateAndSaveAiResponse(conversation, userMessage);
+
+        return new ChatResponse(conversation.getId(), aiChatMessage.getId(), aiChatMessage.getMessage());
+    }
+
+    private Conversation getOrCreateConversation(Long conversationId, String userEmail) {
+        if (conversationId == null) {
+            return createNewConversation(userEmail);
         }
+        return findExistingConversation(conversationId);
+    }
 
-        // Gemini API가 요구하는 요청 본문(Body) 형식으로 변경합니다.
-        Map<String, Object> body = Map.of(
-                "contents", new Object[]{
-                        Map.of("parts", new Object[]{
-                                Map.of("text", prompt)
-                        })
-                }
-        );
+    private Conversation createNewConversation(String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userEmail));
 
+        Conversation conversation = new Conversation(user);
+        return conversationRepository.save(conversation);
+    }
+
+    private Conversation findExistingConversation(Long conversationId) {
+        return conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new IllegalArgumentException("대화를 찾을 수 없습니다: " + conversationId));
+    }
+
+    private ChatMessage saveUserMessage(Conversation conversation, String message) {
+        ChatMessage userMessage = ChatMessage.builder()
+                .conversation(conversation)
+                .sender(Sender.USER)
+                .message(message)
+                .build();
+
+        return chatMessageRepository.save(userMessage);
+    }
+
+    private ChatMessage generateAndSaveAiResponse(Conversation conversation, String userMessage) {
         try {
-            JsonNode resp = webClient.post()
-                    // 모델 이름과 API 키를 URL 경로와 파라미터로 전달합니다.
-                    .uri("/" + model + ":generateContent?key=" + apiKey)
-                    .bodyValue(body)
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block();
+            String model = "gemini-2.5-flash-lite";
+            GenerateContentResponse response = geminiClient.models.generateContent(model, userMessage, null);
+            String aiMessage = response.text();
 
-            if (resp == null) {
-                return "Gemini로부터 응답을 받지 못했습니다.";
-            }
+            ChatMessage aiChatMessage = ChatMessage.builder()
+                    .conversation(conversation)
+                    .sender(Sender.AI)
+                    .message(aiMessage)
+                    .build();
 
-            // Gemini API의 응답 JSON 구조에 맞게 경로를 수정합니다.
-            JsonNode contentNode = resp.at("/candidates/0/content/parts/0/text");
-            return contentNode.isMissingNode() ? "응답 내용이 비어있습니다." : contentNode.asText();
+            return chatMessageRepository.save(aiChatMessage);
 
         } catch (Exception e) {
-            // 에러 발생 시 원인을 파악하기 쉽도록 예외를 던집니다.
-            throw new RuntimeException("Gemini API 호출 중 오류 발생: " + e.getMessage(), e);
+            log.error("Gemini API 호출 실패: {}", e.getMessage(), e);
+            throw new RuntimeException("AI 응답 생성에 실패했습니다: " + e.getMessage(), e);
         }
     }
 }

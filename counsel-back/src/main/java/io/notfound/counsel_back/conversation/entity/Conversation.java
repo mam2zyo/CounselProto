@@ -1,6 +1,5 @@
 package io.notfound.counsel_back.conversation.entity;
 
-
 import io.notfound.counsel_back.user.entity.User;
 import jakarta.persistence.*;
 import lombok.Builder;
@@ -10,6 +9,8 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Entity
@@ -27,9 +28,19 @@ public class Conversation {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ChatMessage> chatMessages = new ArrayList<>();
+
+    @Column(columnDefinition = "TEXT")
+    private String summary;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
+
+    public void addChatMessage(ChatMessage chatMessage) {
+        this.chatMessages.add(chatMessage);
+    }
 
     @Builder
     public Conversation(User user) {
