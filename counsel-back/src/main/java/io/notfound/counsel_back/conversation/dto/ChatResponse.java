@@ -6,6 +6,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class ChatResponse {
-//    private Long ConversationId;
+    private Long conversationId;
+    private Long chatMessageId;
     private String aiMessage;
 }
