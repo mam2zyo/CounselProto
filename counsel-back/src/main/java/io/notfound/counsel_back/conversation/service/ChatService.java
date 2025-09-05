@@ -12,6 +12,7 @@ import io.notfound.counsel_back.conversation.repository.ConversationRepository;
 import io.notfound.counsel_back.user.entity.User;
 import io.notfound.counsel_back.user.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,16 +23,17 @@ public class ChatService {
     private final UserRepository userRepository;
     private final ConversationRepository conversationRepository;
     private final ChatMessageRepository chatMessageRepository;
-    private final Client geminiClient;
+    private final Client client;
 
     public ChatService(
             UserRepository userRepository,
             ConversationRepository conversationRepository,
-            ChatMessageRepository chatMessageRepository) {
+            ChatMessageRepository chatMessageRepository,
+            @Value("{gemini.api.key}") String key) {
         this.userRepository = userRepository;
         this.conversationRepository = conversationRepository;
         this.chatMessageRepository = chatMessageRepository;
-        this.geminiClient = new Client();
+        this.client = Client.builder().apiKey(key).build();
     }
 
     @Transactional
@@ -82,7 +84,7 @@ public class ChatService {
     private ChatMessage generateAndSaveAiResponse(Conversation conversation, String userMessage) {
         try {
             String model = "gemini-2.5-flash-lite";
-            GenerateContentResponse response = geminiClient.models.generateContent(model, userMessage, null);
+            GenerateContentResponse response = client.models.generateContent(model, userMessage, null);
             String aiMessage = response.text();
 
             ChatMessage aiChatMessage = ChatMessage.builder()
