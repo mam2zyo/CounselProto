@@ -29,7 +29,7 @@ public class ChatMessage {
     private Sender sender;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
     @CreatedDate
