@@ -29,7 +29,7 @@ public class ChatService {
             UserRepository userRepository,
             ConversationRepository conversationRepository,
             ChatMessageRepository chatMessageRepository,
-            @Value("{gemini.api.key}") String key) {
+            @Value("${gemini.api.key}") String key) {
         this.userRepository = userRepository;
         this.conversationRepository = conversationRepository;
         this.chatMessageRepository = chatMessageRepository;
