@@ -1,4 +1,3 @@
-// src/pages/ChatPage.jsx
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -10,24 +9,49 @@ import { VoiceChatIcon } from "../components/Icons";
 import { sendMessage as sendMessageApi } from "../api/chat";
 
 function ChatPage() {
-  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [chatMode, setChatMode] = useState("text"); // 'text', 'voiceInput', 'voiceChat'
+
+  // 👉 대화 목록
+  const [conversations, setConversations] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState(null);
 
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
   const mainContentRef = useRef(null);
 
-  useEffect(() => {
-    if (chatMode !== "voiceChat" && mainContentRef.current) {
-      mainContentRef.current.scrollTop = mainContentRef.current.scrollHeight;
-    }
-  }, [messages, chatMode]);
+  // 현재 대화 찾기
+  const activeConversation = conversations.find(
+    (c) => c.id === activeConversationId
+  );
 
+  useEffect(() => {
+    if (
+      chatMode !== "voiceChat" &&
+      mainContentRef.current &&
+      activeConversation
+    ) {
+      mainContentRef.current.scrollTop =
+        mainContentRef.current.scrollHeight;
+    }
+  }, [activeConversation, chatMode]);
+
+  // 🟢 새 handleSendMessage
   const handleSendMessage = async () => {
     if (input.trim() === "" || !isLoggedIn) return;
 
     const userMessageText = input.trim();
+    let currentId = activeConversationId;
+
+    // 새 대화 생성
+    if (!currentId) {
+      currentId = Date.now();
+      setConversations((prev) => [
+        ...prev,
+        { id: currentId, title: userMessageText.slice(0, 10), messages: [] },
+      ]);
+      setActiveConversationId(currentId);
+    }
 
     const newUserMessage = {
       id: Date.now(),
@@ -35,32 +59,32 @@ function ChatPage() {
       sender: "user",
     };
 
-    setMessages((prev) => [...prev, newUserMessage]);
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === currentId
+          ? { ...c, messages: [...c.messages, newUserMessage] }
+          : c
+      )
+    );
     setInput("");
 
     try {
       const response = await sendMessageApi(userMessageText);
-
       const newAiMessage = {
         id: Date.now() + 1,
         text: response.data.aiMessage,
         sender: "ai",
       };
-      setMessages((prev) => [...prev, newAiMessage]);
 
-      if (chatMode === "voiceChat") {
-        console.log("TTS 재생 (음성 채팅 모드):", newAiMessage.text);
-      }
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === currentId
+            ? { ...c, messages: [...c.messages, newAiMessage] }
+            : c
+        )
+      );
     } catch (error) {
       console.error("Chat API Error:", error);
-
-      const errorAiMessage = {
-        id: Date.now() + 1,
-        text: "답변을 생성하는 중 오류가 발생했습니다.",
-        sender: "ai",
-        isError: true,
-      };
-      setMessages((prev) => [...prev, errorAiMessage]);
     }
   };
 
@@ -71,7 +95,7 @@ function ChatPage() {
     }
     setChatMode(mode);
     if (mode === "voiceChat") {
-      setMessages([]);
+      setActiveConversationId(null); // 음성 모드 진입 시 대화 초기화
     }
   };
 
@@ -86,9 +110,16 @@ function ChatPage() {
       );
     }
 
-    return messages.map((message) => (
-      // <ChatMessage key={message.id} message={message} />
-      <ChatMessage message={message} />
+    if (!activeConversation) {
+      return (
+        <p className="text-gray-400 text-center mt-10">
+          새로운 대화를 시작해보세요 ✨
+        </p>
+      );
+    }
+
+    return activeConversation.messages.map((message) => (
+      <ChatMessage key={message.id} message={message} />
     ));
   };
 
@@ -108,7 +139,10 @@ function ChatPage() {
           handleModeSwitch={handleModeSwitch}
         />
       </div>
-      <Sidebar />
+      <Sidebar
+        conversations={conversations}
+        setActiveConversationId={setActiveConversationId}
+      />
     </div>
   );
 }
