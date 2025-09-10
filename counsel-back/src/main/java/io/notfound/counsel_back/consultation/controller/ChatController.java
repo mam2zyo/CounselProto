@@ -1,8 +1,5 @@
-package io.notfound.counsel_back.conversation.controller;
+package io.notfound.counsel_back.consultation.controller;
 
-import io.notfound.counsel_back.conversation.dto.ChatRequest;
-import io.notfound.counsel_back.conversation.dto.ChatResponse;
-import io.notfound.counsel_back.conversation.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -10,6 +7,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import io.notfound.counsel_back.consultation.dto.ChatRequest;
+import io.notfound.counsel_back.consultation.dto.ChatResponse;
+import io.notfound.counsel_back.consultation.service.ChatService;
 
 @RestController
 @RequestMapping("/api/chat")

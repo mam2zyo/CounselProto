@@ -1,4 +1,4 @@
-package io.notfound.counsel_back.conversation.dto;
+package io.notfound.counsel_back.consultation.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;

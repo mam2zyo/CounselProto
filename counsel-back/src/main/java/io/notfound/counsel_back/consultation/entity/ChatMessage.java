@@ -1,4 +1,4 @@
-package io.notfound.counsel_back.conversation.entity;
+package io.notfound.counsel_back.consultation.entity;
 
 import jakarta.persistence.*;
 import lombok.Builder;
@@ -22,7 +22,7 @@ public class ChatMessage {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "conversation_id")
-    private Conversation conversation;
+    private Consultation consultation;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -37,8 +37,8 @@ public class ChatMessage {
     private LocalDateTime createdAt;
 
     @Builder
-    public ChatMessage(Conversation conversation, Sender sender, String message) {
-        this.conversation = conversation;
+    public ChatMessage(Consultation consultation, Sender sender, String message) {
+        this.consultation = consultation;
         this.sender = sender;
         this.message = message;
     }

@@ -1,4 +1,4 @@
-package io.notfound.counsel_back.conversation.entity;
+package io.notfound.counsel_back.consultation.entity;
 
 import io.notfound.counsel_back.user.entity.User;
 import jakarta.persistence.*;
@@ -16,7 +16,7 @@ import java.util.List;
 @Entity
 @NoArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-public class Conversation {
+public class Consultation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,7 +28,7 @@ public class Conversation {
     @JoinColumn(name = "user_id")
     private User user;
 
-    @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "consultation", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChatMessage> chatMessages = new ArrayList<>();
 
     @Column(columnDefinition = "TEXT")
@@ -43,7 +43,7 @@ public class Conversation {
     }
 
     @Builder
-    public Conversation(User user) {
+    public Consultation(User user) {
         this.user = user;
     }
 }
