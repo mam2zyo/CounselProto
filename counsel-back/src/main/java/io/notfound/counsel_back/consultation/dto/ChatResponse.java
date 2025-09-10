@@ -1,4 +1,4 @@
-package io.notfound.counsel_back.conversation.dto;
+package io.notfound.counsel_back.consultation.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -6,7 +6,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class ChatResponse {
-    private Long conversationId;
+    private Long consultationId;
     private Long chatMessageId;
     private String aiMessage;
 }

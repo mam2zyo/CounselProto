@@ -1,14 +1,15 @@
-package io.notfound.counsel_back.conversation.service;
+package io.notfound.counsel_back.consultation.service;
 
 import com.google.genai.Client;
 import com.google.genai.types.GenerateContentResponse;
-import io.notfound.counsel_back.conversation.dto.ChatRequest;
-import io.notfound.counsel_back.conversation.dto.ChatResponse;
-import io.notfound.counsel_back.conversation.entity.ChatMessage;
-import io.notfound.counsel_back.conversation.entity.Conversation;
-import io.notfound.counsel_back.conversation.entity.Sender;
-import io.notfound.counsel_back.conversation.repository.ChatMessageRepository;
-import io.notfound.counsel_back.conversation.repository.ConversationRepository;
+
+import io.notfound.counsel_back.consultation.dto.ChatRequest;
+import io.notfound.counsel_back.consultation.dto.ChatResponse;
+import io.notfound.counsel_back.consultation.entity.ChatMessage;
+import io.notfound.counsel_back.consultation.entity.Consultation;
+import io.notfound.counsel_back.consultation.entity.Sender;
+import io.notfound.counsel_back.consultation.repository.ChatMessageRepository;
+import io.notfound.counsel_back.consultation.repository.ConsultationRepository;
 import io.notfound.counsel_back.user.entity.User;
 import io.notfound.counsel_back.user.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -21,17 +22,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChatService {
 
     private final UserRepository userRepository;
-    private final ConversationRepository conversationRepository;
+    private final ConsultationRepository consultationRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final Client client;
 
     public ChatService(
             UserRepository userRepository,
-            ConversationRepository conversationRepository,
+            ConsultationRepository consultationRepository,
             ChatMessageRepository chatMessageRepository,
             @Value("${gemini.api.key}") String key) {
         this.userRepository = userRepository;
-        this.conversationRepository = conversationRepository;
+        this.consultationRepository = consultationRepository;
         this.chatMessageRepository = chatMessageRepository;
         this.client = Client.builder().apiKey(key).build();
     }
@@ -40,40 +41,40 @@ public class ChatService {
     public ChatResponse getChatCompletion(ChatRequest request, String userEmail) {
         String userMessage = request.getMessage();
 
-        Conversation conversation = getOrCreateConversation(request.getConversationId(), userEmail);
+        Consultation consultation = getOrCreateConsultation(request.getConsultationId(), userEmail);
 
         // 사용자 메시지 저장
-        ChatMessage userChatMessage = saveUserMessage(conversation, userMessage);
+        ChatMessage userChatMessage = saveUserMessage(consultation, userMessage);
 
         // AI 응답 생성 및 저장
-        ChatMessage aiChatMessage = generateAndSaveAiResponse(conversation, userMessage);
+        ChatMessage aiChatMessage = generateAndSaveAiResponse(consultation, userMessage);
 
-        return new ChatResponse(conversation.getId(), aiChatMessage.getId(), aiChatMessage.getMessage());
+        return new ChatResponse(consultation.getId(), aiChatMessage.getId(), aiChatMessage.getMessage());
     }
 
-    private Conversation getOrCreateConversation(Long conversationId, String userEmail) {
-        if (conversationId == null) {
-            return createNewConversation(userEmail);
+    private Consultation getOrCreateConsultation(Long consultationId, String userEmail) {
+        if (consultationId == null) {
+            return createNewConsultation(userEmail);
         }
-        return findExistingConversation(conversationId);
+        return findExistingConsultation(consultationId);
     }
 
-    private Conversation createNewConversation(String userEmail) {
+    private Consultation createNewConsultation(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userEmail));
 
-        Conversation conversation = new Conversation(user);
-        return conversationRepository.save(conversation);
+        Consultation consultation = new Consultation(user);
+        return consultationRepository.save(consultation);
     }
 
-    private Conversation findExistingConversation(Long conversationId) {
-        return conversationRepository.findById(conversationId)
-                .orElseThrow(() -> new IllegalArgumentException("대화를 찾을 수 없습니다: " + conversationId));
+    private Consultation findExistingConsultation(Long consultationId) {
+        return consultationRepository.findById(consultationId)
+                .orElseThrow(() -> new IllegalArgumentException("대화를 찾을 수 없습니다: " + consultationId));
     }
 
-    private ChatMessage saveUserMessage(Conversation conversation, String message) {
+    private ChatMessage saveUserMessage(Consultation consultation, String message) {
         ChatMessage userMessage = ChatMessage.builder()
-                .conversation(conversation)
+                .consultation(consultation)
                 .sender(Sender.USER)
                 .message(message)
                 .build();
@@ -81,14 +82,14 @@ public class ChatService {
         return chatMessageRepository.save(userMessage);
     }
 
-    private ChatMessage generateAndSaveAiResponse(Conversation conversation, String userMessage) {
+    private ChatMessage generateAndSaveAiResponse(Consultation consultation, String userMessage) {
         try {
             String model = "gemini-2.5-flash-lite";
             GenerateContentResponse response = client.models.generateContent(model, userMessage, null);
             String aiMessage = response.text();
 
             ChatMessage aiChatMessage = ChatMessage.builder()
-                    .conversation(conversation)
+                    .consultation(consultation)
                     .sender(Sender.AI)
                     .message(aiMessage)
                     .build();
@@ -97,7 +98,7 @@ public class ChatService {
 
         } catch (Exception e) {
             log.error("Gemini API 호출 실패: {}", e.getMessage(), e);
-            throw new RuntimeException("AI 응답 생성에 실패했습니다: " + e.getMessage(), e);
+            throw new RuntimeException("AI 응답S 생성에 실패했습니다: " + e.getMessage(), e);
         }
     }
 }
