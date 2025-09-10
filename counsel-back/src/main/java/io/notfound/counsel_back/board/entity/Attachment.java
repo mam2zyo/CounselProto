@@ -5,9 +5,10 @@ import lombok.*;
 
 @Entity
 @Getter
+@Setter
 @NoArgsConstructor
-@Builder
 @AllArgsConstructor
+@Builder
 public class Attachment {
 
     @Id
@@ -15,14 +16,10 @@ public class Attachment {
     private Long id;
 
     private String fileName;
+
     private String fileUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "post_id")
     private Post post;
-    
-    public void setPost(Post post) {
-        this.post = post;
-    }
-
 }

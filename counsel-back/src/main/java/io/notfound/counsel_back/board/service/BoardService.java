@@ -1,4 +1,3 @@
-
 package io.notfound.counsel_back.board.service;
 
 import io.notfound.counsel_back.board.dto.PostRequestDto;
@@ -11,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,7 +22,6 @@ public class BoardService {
 
     @Transactional
     public PostResponseDto createPost(PostRequestDto request) {
-        // Post 생성 및 저장
         Post post = Post.builder()
                 .title(request.getTitle())
                 .content(request.getContent())
@@ -30,31 +29,66 @@ public class BoardService {
 
         final Post savedPost = postRepository.save(post);
 
-        // 첨부파일 저장
         if (request.getAttachmentUrls() != null) {
             for (String url : request.getAttachmentUrls()) {
                 Attachment attachment = Attachment.builder()
-                        .fileName(url)   // 파일 이름은 예제용
+                        .fileName(url)
                         .fileUrl(url)
                         .post(savedPost)
                         .build();
 
                 attachmentRepository.save(attachment);
-                savedPost.getAttachments().add(attachment); // 양방향 연관관계면 필요
+                savedPost.getAttachments().add(attachment);
             }
         }
 
-        // 응답 DTO 변환
-        PostResponseDto response = new PostResponseDto();
-        response.setPostId(savedPost.getId());
-        response.setTitle(savedPost.getTitle());
-        response.setContent(savedPost.getContent());
-        response.setAttachmentUrls(
-                savedPost.getAttachments().stream()
-                        .map(Attachment::getFileUrl)
-                        .collect(Collectors.toList())
-        );
+        return new PostResponseDto(savedPost);
+    }
 
-        return response;
+    @Transactional(readOnly = true)
+    public PostResponseDto getPost(Long id) {
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
+        return new PostResponseDto(post);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PostResponseDto> getAllPosts() {
+        return postRepository.findAll().stream()
+                .map(PostResponseDto::new)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public PostResponseDto updatePost(Long id, PostRequestDto request) {
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
+
+        // 한 번에 업데이트하는 메서드 호출
+        post.update(request.getTitle(), request.getContent());
+
+        // 기존 첨부파일 제거 (orphanRemoval 적용)
+        post.getAttachments().clear();
+
+        // 새로운 첨부파일 추가
+        if (request.getAttachmentUrls() != null) {
+            for (String url : request.getAttachmentUrls()) {
+                Attachment attachment = Attachment.builder()
+                        .fileName(url)
+                        .fileUrl(url)
+                        .post(post)
+                        .build();
+                post.addAttachment(attachment);
+            }
+        }
+
+        return new PostResponseDto(post);
+    }
+
+    @Transactional
+    public void deletePost(Long id) {
+        Post post = postRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
+        postRepository.delete(post);
     }
 }
