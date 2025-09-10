@@ -1,3 +1,4 @@
+// src/pages/ChatPage.jsx
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -9,22 +10,40 @@ import { VoiceChatIcon } from "../components/Icons";
 import { sendMessage as sendMessageApi } from "../api/chat";
 
 function ChatPage() {
-  const [input, setInput] = useState("");
-  const [chatMode, setChatMode] = useState("text"); // 'text', 'voiceInput', 'voiceChat'
-
-  // 👉 대화 목록
-  const [conversations, setConversations] = useState([]);
-  const [activeConversationId, setActiveConversationId] = useState(null);
-
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
   const mainContentRef = useRef(null);
 
-  // 현재 대화 찾기
+  // 🔹 localStorage 기반 상태 초기화
+  const [conversations, setConversations] = useState(() => {
+    const saved = localStorage.getItem("conversations");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [activeConversationId, setActiveConversationId] = useState(() => {
+    const savedId = localStorage.getItem("activeConversationId");
+    return savedId ? Number(savedId) : null;
+  });
+
+  const [input, setInput] = useState("");
+  const [chatMode, setChatMode] = useState("text"); // 'text', 'voiceInput', 'voiceChat'
+
+  // 🔹 상태 변경 시 localStorage 저장
+  useEffect(() => {
+    localStorage.setItem("conversations", JSON.stringify(conversations));
+  }, [conversations]);
+
+  useEffect(() => {
+    if (activeConversationId !== null) {
+      localStorage.setItem("activeConversationId", activeConversationId);
+    }
+  }, [activeConversationId]);
+
   const activeConversation = conversations.find(
     (c) => c.id === activeConversationId
   );
 
+  // 스크롤 자동 이동
   useEffect(() => {
     if (
       chatMode !== "voiceChat" &&
@@ -36,14 +55,13 @@ function ChatPage() {
     }
   }, [activeConversation, chatMode]);
 
-  // 🟢 새 handleSendMessage
+  // 메시지 전송
   const handleSendMessage = async () => {
     if (input.trim() === "" || !isLoggedIn) return;
 
     const userMessageText = input.trim();
     let currentId = activeConversationId;
 
-    // 새 대화 생성
     if (!currentId) {
       currentId = Date.now();
       setConversations((prev) => [
@@ -95,7 +113,7 @@ function ChatPage() {
     }
     setChatMode(mode);
     if (mode === "voiceChat") {
-      setActiveConversationId(null); // 음성 모드 진입 시 대화 초기화
+      setActiveConversationId(null);
     }
   };
 
@@ -139,8 +157,11 @@ function ChatPage() {
           handleModeSwitch={handleModeSwitch}
         />
       </div>
+
       <Sidebar
         conversations={conversations}
+        setConversations={setConversations}
+        activeConversationId={activeConversationId}
         setActiveConversationId={setActiveConversationId}
       />
     </div>
