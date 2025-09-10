@@ -1,8 +1,8 @@
-package io.notfound.counsel_back.consultation.controller;
+package io.notfound.counsel_back.board.controller;
 
-import io.notfound.counsel_back.consultation.service.BoardService;
-import io.notfound.counsel_back.consultation.dto.PostRequestDto;
-import io.notfound.counsel_back.consultation.dto.PostResponseDto;
+import io.notfound.counsel_back.board.dto.PostRequestDto;
+import io.notfound.counsel_back.board.dto.PostResponseDto;
+import io.notfound.counsel_back.board.service.BoardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

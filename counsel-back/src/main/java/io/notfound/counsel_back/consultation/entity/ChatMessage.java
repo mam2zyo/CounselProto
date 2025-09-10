@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Entity
 @NoArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-@Table(indexes = @Index(name = "idx_conversation_created_at", columnList = "conversation_id, createdAt"))
+@Table(indexes = @Index(name = "idx_consultation_created_at", columnList = "consultation_id, createdAt"))
 public class ChatMessage {
 
     @Id
@@ -21,7 +21,7 @@ public class ChatMessage {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "conversation_id")
+    @JoinColumn(name = "consultation_id")
     private Consultation consultation;
 
     @Enumerated(EnumType.STRING)

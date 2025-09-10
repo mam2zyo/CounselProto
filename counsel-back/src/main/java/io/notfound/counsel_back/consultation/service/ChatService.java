@@ -41,7 +41,7 @@ public class ChatService {
     public ChatResponse getChatCompletion(ChatRequest request, String userEmail) {
         String userMessage = request.getMessage();
 
-        Consultation consultation = getOrCreateConsultation(request.getConversationId(), userEmail);
+        Consultation consultation = getOrCreateConsultation(request.getConsultationId(), userEmail);
 
         // 사용자 메시지 저장
         ChatMessage userChatMessage = saveUserMessage(consultation, userMessage);
@@ -52,11 +52,11 @@ public class ChatService {
         return new ChatResponse(consultation.getId(), aiChatMessage.getId(), aiChatMessage.getMessage());
     }
 
-    private Consultation getOrCreateConsultation(Long conversationId, String userEmail) {
-        if (conversationId == null) {
+    private Consultation getOrCreateConsultation(Long consultationId, String userEmail) {
+        if (consultationId == null) {
             return createNewConsultation(userEmail);
         }
-        return findExistingConsultation(conversationId);
+        return findExistingConsultation(consultationId);
     }
 
     private Consultation createNewConsultation(String userEmail) {
@@ -67,9 +67,9 @@ public class ChatService {
         return consultationRepository.save(consultation);
     }
 
-    private Consultation findExistingConsultation(Long converrsationId) {
-        return consultationRepository.findById(converrsationId)
-                .orElseThrow(() -> new IllegalArgumentException("대화를 찾을 수 없습니다: " + converrsationId));
+    private Consultation findExistingConsultation(Long consultationId) {
+        return consultationRepository.findById(consultationId)
+                .orElseThrow(() -> new IllegalArgumentException("대화를 찾을 수 없습니다: " + consultationId));
     }
 
     private ChatMessage saveUserMessage(Consultation consultation, String message) {

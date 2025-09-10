@@ -1,4 +1,4 @@
-package io.notfound.counsel_back.consultation.dto;
+package io.notfound.counsel_back.board.dto;
 
 import lombok.Getter;
 import lombok.Setter;

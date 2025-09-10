@@ -1,26 +1,28 @@
-package io.notfound.counsel_back.consultation.entity;
+package io.notfound.counsel_back.board.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @NoArgsConstructor
 @Builder
 @AllArgsConstructor
-public class PostComment {
+public class Attachment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String comment;
-
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private String fileName;
+    private String fileUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "post_id")
     private Post post;
+    
+    public void setPost(Post post) {
+        this.post = post;
+    }
+
 }

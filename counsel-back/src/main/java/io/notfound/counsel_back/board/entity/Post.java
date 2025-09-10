@@ -1,4 +1,4 @@
-package io.notfound.counsel_back.consultation.entity;
+package io.notfound.counsel_back.board.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

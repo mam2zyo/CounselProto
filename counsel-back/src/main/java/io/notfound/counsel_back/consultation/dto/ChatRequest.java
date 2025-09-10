@@ -8,7 +8,7 @@ import lombok.Setter;
 @Setter
 public class ChatRequest {
 
-    private Long ConversationId;
+    private Long ConsultationId;
 
     @NotBlank(message = "메시지를 입력해주세요.")
     private String message;

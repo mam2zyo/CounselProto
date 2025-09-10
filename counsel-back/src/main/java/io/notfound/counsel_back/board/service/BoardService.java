@@ -1,12 +1,12 @@
 
-package io.notfound.counsel_back.consultation.service;
+package io.notfound.counsel_back.board.service;
 
-import io.notfound.counsel_back.consultation.dto.PostRequestDto;
-import io.notfound.counsel_back.consultation.dto.PostResponseDto;
-import io.notfound.counsel_back.consultation.entity.Attachment;
-import io.notfound.counsel_back.consultation.entity.Post;
-import io.notfound.counsel_back.consultation.repository.AttachmentRepository;
-import io.notfound.counsel_back.consultation.repository.PostRepository;
+import io.notfound.counsel_back.board.dto.PostRequestDto;
+import io.notfound.counsel_back.board.dto.PostResponseDto;
+import io.notfound.counsel_back.board.entity.Attachment;
+import io.notfound.counsel_back.board.entity.Post;
+import io.notfound.counsel_back.board.repository.AttachmentRepository;
+import io.notfound.counsel_back.board.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
