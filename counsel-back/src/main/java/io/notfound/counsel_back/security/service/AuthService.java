@@ -1,5 +1,7 @@
 package io.notfound.counsel_back.security.service;
 
+import io.notfound.counsel_back.common.exception.CustomException;
+import io.notfound.counsel_back.common.exception.ErrorCode;
 import io.notfound.counsel_back.security.dto.LoginRequestDto;
 import io.notfound.counsel_back.security.dto.LoginResponseDto;
 import io.notfound.counsel_back.security.dto.RefreshTokenRequestDto;
@@ -41,7 +43,7 @@ public class AuthService {
     @Transactional
     public User signup(String email, String password) {
         if (userRepository.findByEmail(email).isPresent()) {
-            throw new IllegalArgumentException("이미 존재하는 이메일입니다.");
+            throw new CustomException(ErrorCode.USER_ALREADY_EXISTS);
         }
         User user = User.builder()
                 .email(email)
@@ -93,20 +95,20 @@ public class AuthService {
         // 2. 리프레시 토큰에서 사용자 ID(이메일)를 추출합니다.
         String email = jwtTokenProvider.getUserId(refreshToken);
         if (email == null) {
-            throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
         }
 
         // 3. DB에 저장된 리프레시 토큰과 일치하는지 확인합니다.
         RefreshToken storedToken = refreshTokenRepository.findById(email)
-                .orElseThrow(() -> new IllegalArgumentException("리프레시 토큰이 데이터베이스에 존재하지 않습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.REFRESH_TOKEN_NOT_FOUND));
 
         if (!storedToken.getRefreshToken().equals(refreshToken)) {
-            throw new IllegalArgumentException("유효하지 않은 리프레시 토큰입니다.");
+            throw new CustomException(ErrorCode.INVALID_TOKEN);
         }
 
         // 4. 조회한 사용자 정보로 새로운 액세스 토큰을 생성하여 반환합니다.
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         return jwtTokenProvider.createAccessToken(user.getEmail(), user.getRole());
     }
