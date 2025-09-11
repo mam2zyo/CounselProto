@@ -42,4 +42,9 @@ public class ChatMessage {
         this.sender = sender;
         this.message = message;
     }
+
+    public void setConsultation(Consultation consultation) {
+        this.consultation = consultation;
+        if (!consultation.getChatMessages().contains(this)) consultation.getChatMessages().add(this);
+    }
 }

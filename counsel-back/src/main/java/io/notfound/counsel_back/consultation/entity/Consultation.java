@@ -2,9 +2,7 @@ package io.notfound.counsel_back.consultation.entity;
 
 import io.notfound.counsel_back.user.entity.User;
 import jakarta.persistence.*;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -15,6 +13,8 @@ import java.util.List;
 @Getter
 @Entity
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @EntityListeners(AuditingEntityListener.class)
 public class Consultation {
 
@@ -28,6 +28,7 @@ public class Consultation {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @Builder.Default
     @OneToMany(mappedBy = "consultation", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChatMessage> chatMessages = new ArrayList<>();
 
@@ -38,12 +39,18 @@ public class Consultation {
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
-    public void addChatMessage(ChatMessage chatMessage) {
-        this.chatMessages.add(chatMessage);
-    }
-
-    @Builder
     public Consultation(User user) {
         this.user = user;
+        if (user != null && !user.getConsultations().contains(this)) user.getConsultations().add(this);
+    }
+
+    public void addChatMessage(ChatMessage chatMessage) {
+        chatMessages.add(chatMessage);
+        if (chatMessage.getConsultation() != this) chatMessage.setConsultation(this);
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+        if (!user.getConsultations().contains(this)) user.getConsultations().add(this);
     }
 }

@@ -2,7 +2,6 @@ package io.notfound.counsel_back.consultation.service;
 
 import com.google.genai.Client;
 import com.google.genai.types.GenerateContentResponse;
-
 import io.notfound.counsel_back.consultation.dto.ChatRequest;
 import io.notfound.counsel_back.consultation.dto.ChatResponse;
 import io.notfound.counsel_back.consultation.entity.ChatMessage;
@@ -26,11 +25,10 @@ public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final Client client;
 
-    public ChatService(
-            UserRepository userRepository,
-            ConsultationRepository consultationRepository,
-            ChatMessageRepository chatMessageRepository,
-            @Value("${gemini.api.key}") String key) {
+    public ChatService(UserRepository userRepository,
+                       ConsultationRepository consultationRepository,
+                       ChatMessageRepository chatMessageRepository,
+                       @Value("${gemini.api.key}") String key) {
         this.userRepository = userRepository;
         this.consultationRepository = consultationRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -40,29 +38,29 @@ public class ChatService {
     @Transactional
     public ChatResponse getChatCompletion(ChatRequest request, String userEmail) {
         String userMessage = request.getMessage();
-
         Consultation consultation = getOrCreateConsultation(request.getConsultationId(), userEmail);
 
-        // 사용자 메시지 저장
-        ChatMessage userChatMessage = saveUserMessage(consultation, userMessage);
+        ChatMessage userChatMessage = ChatMessage.builder()
+                .consultation(consultation)
+                .sender(Sender.USER)
+                .message(userMessage)
+                .build();
+        consultation.addChatMessage(userChatMessage);
+        chatMessageRepository.save(userChatMessage);
 
-        // AI 응답 생성 및 저장
         ChatMessage aiChatMessage = generateAndSaveAiResponse(consultation, userMessage);
 
         return new ChatResponse(consultation.getId(), aiChatMessage.getId(), aiChatMessage.getMessage());
     }
 
     private Consultation getOrCreateConsultation(Long consultationId, String userEmail) {
-        if (consultationId == null) {
-            return createNewConsultation(userEmail);
-        }
+        if (consultationId == null) return createNewConsultation(userEmail);
         return findExistingConsultation(consultationId);
     }
 
     private Consultation createNewConsultation(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userEmail));
-
         Consultation consultation = new Consultation(user);
         return consultationRepository.save(consultation);
     }
@@ -70,16 +68,6 @@ public class ChatService {
     private Consultation findExistingConsultation(Long consultationId) {
         return consultationRepository.findById(consultationId)
                 .orElseThrow(() -> new IllegalArgumentException("대화를 찾을 수 없습니다: " + consultationId));
-    }
-
-    private ChatMessage saveUserMessage(Consultation consultation, String message) {
-        ChatMessage userMessage = ChatMessage.builder()
-                .consultation(consultation)
-                .sender(Sender.USER)
-                .message(message)
-                .build();
-
-        return chatMessageRepository.save(userMessage);
     }
 
     private ChatMessage generateAndSaveAiResponse(Consultation consultation, String userMessage) {
@@ -93,12 +81,11 @@ public class ChatService {
                     .sender(Sender.AI)
                     .message(aiMessage)
                     .build();
-
+            consultation.addChatMessage(aiChatMessage);
             return chatMessageRepository.save(aiChatMessage);
-
         } catch (Exception e) {
             log.error("Gemini API 호출 실패: {}", e.getMessage(), e);
-            throw new RuntimeException("AI 응답S 생성에 실패했습니다: " + e.getMessage(), e);
+            throw new RuntimeException("AI 응답 생성에 실패했습니다: " + e.getMessage(), e);
         }
     }
 }

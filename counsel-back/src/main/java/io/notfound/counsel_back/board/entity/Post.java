@@ -1,5 +1,6 @@
 package io.notfound.counsel_back.board.entity;
 
+import io.notfound.counsel_back.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -10,8 +11,8 @@ import java.util.List;
 @Entity
 @Getter
 @NoArgsConstructor
-@Builder
 @AllArgsConstructor
+@Builder
 public class Post {
 
     @Id
@@ -25,20 +26,24 @@ public class Post {
 
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PostComment> comments = new ArrayList<>();
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
 
     @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Attachment> attachments = new ArrayList<>();
 
-    public void addComment(PostComment comment) {
-        this.comments.add(comment);
-    }
-    
+    // 🔹 편의 메서드
     public void addAttachment(Attachment attachment) {
         attachments.add(attachment);
         attachment.setPost(this);
     }
 
+    public void setUser(User user) {
+        this.user = user;
+        if (!user.getPosts().contains(this)) {
+            user.getPosts().add(this);
+        }
+    }
 }

@@ -2,14 +2,17 @@ package io.notfound.counsel_back.board.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @NoArgsConstructor
-@Builder
 @AllArgsConstructor
+@Builder
+@EntityListeners(AuditingEntityListener.class)
 public class PostComment {
 
     @Id
@@ -18,9 +21,15 @@ public class PostComment {
 
     private String comment;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @CreatedDate
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "post_id")
     private Post post;
+
+    public void setPost(Post post) {
+        this.post = post;
+    }
 }

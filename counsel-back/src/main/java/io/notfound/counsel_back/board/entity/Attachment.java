@@ -6,8 +6,8 @@ import lombok.*;
 @Entity
 @Getter
 @NoArgsConstructor
-@Builder
 @AllArgsConstructor
+@Builder
 public class Attachment {
 
     @Id
@@ -20,9 +20,8 @@ public class Attachment {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "post_id")
     private Post post;
-    
+
     public void setPost(Post post) {
         this.post = post;
     }
-
 }
