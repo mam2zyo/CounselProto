@@ -35,10 +35,15 @@ public class Post {
     public void addComment(PostComment comment) {
         this.comments.add(comment);
     }
-    
+
     public void addAttachment(Attachment attachment) {
         attachments.add(attachment);
         attachment.setPost(this);
     }
 
+    // 제목, 내용 수정 메서드 추가 (setter 대체)
+    public void update(String title, String content) {
+        this.title = title;
+        this.content = content;
+    }
 }
