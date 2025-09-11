@@ -67,7 +67,7 @@ function Sidebar({
             </button>
 
             <button
-              className="btn btn-xs btn-error ml-2"
+              className="btn btn-xs white ml-2"
               onClick={() => {
                 if (confirm("이 대화를 삭제하시겠습니까?"))
                   deleteConversation(c.id);

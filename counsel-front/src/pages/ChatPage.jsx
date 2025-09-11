@@ -129,12 +129,15 @@ function ChatPage() {
     }
 
     if (!activeConversation) {
-      return (
-        <p className="text-gray-400 text-center mt-10">
-          새로운 대화를 시작해보세요 ✨
-        </p>
-      );
-    }
+  return (
+    <div className="flex items-center justify-center h-screen">
+      <p className="text-gray-400 text-center -mt-50">
+        새로운 대화를 시작해보세요 ✨
+      </p>
+    </div>
+  );
+}
+
 
     return activeConversation.messages.map((message) => (
       <ChatMessage key={message.id} message={message} />
@@ -146,6 +149,7 @@ function ChatPage() {
       <input id="my-drawer" type="checkbox" className="drawer-toggle" />
       <div className="drawer-content flex flex-col h-screen">
         <Navbar />
+        
         <main ref={mainContentRef} className="flex-1 overflow-y-auto p-4">
           {renderChatContent()}
         </main>
