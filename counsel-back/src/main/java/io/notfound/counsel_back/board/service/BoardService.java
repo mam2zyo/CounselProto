@@ -9,6 +9,7 @@ import io.notfound.counsel_back.board.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -19,6 +20,7 @@ public class BoardService {
 
     private final PostRepository postRepository;
     private final AttachmentRepository attachmentRepository;
+    private final S3Service s3Service; // S3 업로드 전용 서비스
 
     @Transactional
     public PostResponseDto createPost(PostRequestDto request) {
@@ -29,11 +31,12 @@ public class BoardService {
 
         final Post savedPost = postRepository.save(post);
 
-        if (request.getAttachmentUrls() != null) {
-            for (String url : request.getAttachmentUrls()) {
+        if (request.getAttachments() != null) {
+            for (MultipartFile file : request.getAttachments()) {
+                String fileUrl = s3Service.uploadFile(file); // 파일 S3 업로드
                 Attachment attachment = Attachment.builder()
-                        .fileName(url)
-                        .fileUrl(url)
+                        .fileName(file.getOriginalFilename())
+                        .fileUrl(fileUrl)
                         .post(savedPost)
                         .build();
 
@@ -64,21 +67,21 @@ public class BoardService {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
 
-        // 한 번에 업데이트하는 메서드 호출
         post.update(request.getTitle(), request.getContent());
 
-        // 기존 첨부파일 제거 (orphanRemoval 적용)
+        // 기존 첨부파일 제거
         post.getAttachments().clear();
 
-        // 새로운 첨부파일 추가
-        if (request.getAttachmentUrls() != null) {
-            for (String url : request.getAttachmentUrls()) {
+        if (request.getAttachments() != null) {
+            for (MultipartFile file : request.getAttachments()) {
+                String fileUrl = s3Service.uploadFile(file);
                 Attachment attachment = Attachment.builder()
-                        .fileName(url)
-                        .fileUrl(url)
+                        .fileName(file.getOriginalFilename())
+                        .fileUrl(fileUrl)
                         .post(post)
                         .build();
-                post.addAttachment(attachment);
+                attachmentRepository.save(attachment);
+                post.getAttachments().add(attachment);
             }
         }
 
@@ -92,3 +95,6 @@ public class BoardService {
         postRepository.delete(post);
     }
 }
+
+
+
