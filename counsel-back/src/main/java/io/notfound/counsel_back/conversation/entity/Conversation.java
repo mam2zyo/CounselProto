@@ -12,8 +12,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Getter
 @Entity
+@Getter
 @NoArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
 public class Conversation {
@@ -40,10 +40,16 @@ public class Conversation {
 
     public void addChatMessage(ChatMessage chatMessage) {
         this.chatMessages.add(chatMessage);
+        chatMessage.setConversation(this);
+
     }
+
+    public void updateTitle(String title) { this.title = title; }
+    public void updateSummary(String summary) { this.summary = summary; }
 
     @Builder
     public Conversation(User user) {
         this.user = user;
+        this.title = "새로운 고민 상담";
     }
 }

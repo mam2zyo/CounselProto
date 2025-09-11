@@ -1,7 +1,9 @@
 package io.notfound.counsel_back.conversation.service;
 
 import io.notfound.counsel_back.conversation.dto.ChatRequest;
+import io.notfound.counsel_back.conversation.entity.ChatMessage;
 import io.notfound.counsel_back.conversation.entity.Conversation;
+import io.notfound.counsel_back.conversation.repository.ChatMessageRepository;
 import io.notfound.counsel_back.conversation.repository.ConversationRepository;
 import io.notfound.counsel_back.user.entity.User;
 import io.notfound.counsel_back.user.repository.UserRepository;
@@ -10,12 +12,18 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
+
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -25,26 +33,32 @@ public class ChatService {
     private final ChatMemoryRepository chatMemoryRepository;
     private final UserRepository userRepository;
     private final ConversationRepository conversationRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final ConversationService conversationService;
 
-    public Flux<String> generateStream(ChatRequest request, String email) {
+    public Flux<String> generate(ChatRequest request, String email) {
 
-        Long id = request.getConversationId();
-        String message = request.getMessage();
-        Conversation conversation = null;
+        Long conversationIdLong = request.getConversationId();
+        String messageText = request.getMessage();
 
-        if (id == null) {
-             conversation = createNewConversation(email);
-        } else {
-            conversation = findExistingConversation(id);
-        }
+        Conversation conversation =
+                conversationRepository.findById(conversationIdLong)
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.NOT_FOUND, "대화를 찾을 수 없습니다." + conversationIdLong)
+                        );
 
-        String conversationId = conversation.getId().toString();
+        ChatMessage userChatMessage = new ChatMessage(MessageType.USER, messageText, conversation);
+        conversation.addChatMessage(userChatMessage);
+        chatMessageRepository.save(userChatMessage);
+        conversationRepository.save(conversation);
+
+        String conversationId = conversationIdLong.toString();
 
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .maxMessages(20)
                 .chatMemoryRepository(chatMemoryRepository)
                 .build();
-        chatMemory.add(conversationId, new UserMessage(message));
+        chatMemory.add(conversationId, new UserMessage(messageText));
 
         // 옵션
         OpenAiChatOptions options = OpenAiChatOptions.builder()
@@ -66,26 +80,47 @@ public class ChatService {
                     return token;
                 })
                 .doOnComplete(() -> {
-                    chatMemory.add(conversationId, new AssistantMessage(responseBuffer.toString()));
+                    String fullAiResponse = responseBuffer.toString();
+
+                    // AI 메시지 저장
+                    ChatMessage aiChatMessage = new ChatMessage(MessageType.ASSISTANT, fullAiResponse, conversation);
+                    conversation.addChatMessage(aiChatMessage);
+                    chatMessageRepository.save(aiChatMessage);
+                    conversationRepository.save(conversation);
+
+                    chatMemory.add(conversationId, new AssistantMessage(fullAiResponse));
                     chatMemoryRepository.saveAll(conversationId, chatMemory.get(conversationId));
                 });
     }
 
-    private Conversation createNewConversation(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("사용자를 찾을 수 없습니다: " + email)
-                );
-        Conversation conversation = new Conversation(user);
-        return conversationRepository.save(conversation);
+    public void generateAndSetConversationTitle(Long conversationId, String firstAiResponse) {
+        String titleGenerationPrompt =
+                "다음 대화 내용에 적합한 대화 제목을 6단어 이내로 만들어 줘" + firstAiResponse;
+
+        OpenAiChatOptions options = OpenAiChatOptions.builder()
+                .model("gpt-4.1-nano")
+                .build();
+
+        Prompt titlePrompt = new Prompt(titleGenerationPrompt, options);
+        String generatedTitle = Objects.requireNonNull(openAiChatModel.call(titlePrompt).getResult().getOutput().getText()).trim();
+
+        conversationService.updateConversationTitle(conversationId, generatedTitle);
     }
 
-    private Conversation findExistingConversation(Long conversationId) {
-        return conversationRepository.findById(conversationId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("대화를 찾을 수 없습니다: " + conversationId)
-                );
-    }
-
+//    private Conversation createNewConversation(String email) {
+//        User user = userRepository.findByEmail(email)
+//                .orElseThrow(() ->
+//                        new IllegalArgumentException("사용자를 찾을 수 없습니다: " + email)
+//                );
+//        Conversation conversation = new Conversation(user);
+//        return conversationRepository.save(conversation);
+//    }
+//
+//    private Conversation findExistingConversation(Long conversationId) {
+//        return conversationRepository.findById(conversationId)
+//                .orElseThrow(() ->
+//                        new IllegalArgumentException("대화를 찾을 수 없습니다: " + conversationId)
+//                );
+//    }
 
 }
