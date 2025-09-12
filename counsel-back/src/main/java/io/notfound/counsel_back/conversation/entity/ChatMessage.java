@@ -7,8 +7,10 @@ import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Entity
@@ -34,6 +36,10 @@ public class ChatMessage implements Message {
     @Lob
     @Column(nullable = false, columnDefinition = "TEXT")
     private String text;
+
+    @CreatedDate
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
 
     public ChatMessage(MessageType type, String text, Conversation conversation) {
         this.type = type;

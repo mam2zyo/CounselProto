@@ -19,7 +19,6 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true) // 읽기 전용 트랜잭션 기본 설정
 public class ConversationService {
 
     private final ConversationRepository conversationRepository;
@@ -35,16 +34,17 @@ public class ConversationService {
         return convertToDetailDto(conversation);
     }
 
-    // 사용자 대화 목록 조회
+    @Transactional(readOnly = true)
     public List<ConversationListResponse> getConversationsByUser(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + email));
         return conversationRepository.findByUserOrderByCreatedAtDesc(user).stream()
                 .map(this::convertToListDto)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // 특정 대화 상세 조회
+    @Transactional(readOnly = true)
     public ConversationDetailResponse getConversationDetail(Long conversationId, String email) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대화를 찾을 수 없습니다: " + conversationId));
@@ -87,6 +87,7 @@ public class ConversationService {
     }
 
     // 첫번째 ai 응답을 통한 제목 생성, 위쪽 updatedConversation 을 통해서 추후 변경 가능
+    @Transactional
     public void updateConversationTitle(Long conversationId, String newTitle) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ResponseStatusException(

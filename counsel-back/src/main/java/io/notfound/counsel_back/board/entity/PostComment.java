@@ -18,6 +18,7 @@ public class PostComment {
 
     private String comment;
 
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -25,8 +25,8 @@ public class ConversationController {
     private final ChatService chatService;
     private final ConversationService conversationService; // 새 서비스 주입
 
-    // SSE 스트리밍 채팅 엔드포인트 (기존 chat 기능을 /api/conversations/chat으로 변경)
-    @PostMapping(value = "/chat", produces = MediaType.TEXT_EVENT_STREAM_VALUE) // SSE 명시
+    // 스트리밍 채팅 엔드포인트 (기존 chat 기능을 /api/conversations/chat으로 변경)
+    @PostMapping(value = "/chat")
     public Flux<String> chat(
             @RequestBody ChatRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -50,7 +50,15 @@ public class ConversationController {
             @AuthenticationPrincipal UserDetails userDetails) {
         String email = userDetails.getUsername();
         List<ConversationListResponse> conversations = conversationService.getConversationsByUser(email);
+
+        //디버깅 코드
+        System.out.println("조회된 대화 개수: " + conversations.size());
+        if (!conversations.isEmpty()) {
+            System.out.println("첫 번째 대화 제목: " + conversations.get(0).getTitle());
+        }
+
         return ResponseEntity.ok(conversations);
+//        return ResponseEntity.ok(conversations);
     }
 
     // 특정 대화 상세 조회

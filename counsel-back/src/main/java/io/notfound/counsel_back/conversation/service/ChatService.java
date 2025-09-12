@@ -36,6 +36,7 @@ public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final ConversationService conversationService;
 
+    @Transactional
     public Flux<String> generate(ChatRequest request, String email) {
 
         Long conversationIdLong = request.getConversationId();
@@ -93,6 +94,7 @@ public class ChatService {
                 });
     }
 
+    @Transactional
     public void generateAndSetConversationTitle(Long conversationId, String firstAiResponse) {
         String titleGenerationPrompt =
                 "다음 대화 내용에 적합한 대화 제목을 6단어 이내로 만들어 줘" + firstAiResponse;
