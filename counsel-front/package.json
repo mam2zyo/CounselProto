@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@microsoft/fetch-event-source": "^2.0.1",
     "axios": "^1.11.0",
     "daisyui": "^5.0.50",
     "react": "^19.1.1",
