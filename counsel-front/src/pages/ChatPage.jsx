@@ -11,7 +11,8 @@ import {
   createConversation,
   deleteConversation,
   fetchConversationDetail,
-  streamChat } from "../api/conversation";
+  streamChat
+} from "../api/conversation";
 
 function ChatPage() {
   const { isLoggedIn } = useAuth();
@@ -46,12 +47,12 @@ function ChatPage() {
     }
   };
 
-  // 스크롤 자동 이동
+  // 스크롤 자동 이동, 메시지 추가 시마다 실행
   useEffect(() => {
     if (mainContentRef.current) {
       mainContentRef.current.scrollTop = mainContentRef.current.scrollHeight;
     }
-  }, [activeConversation?.messages]); // 메시지가 변경될 때마다 스크롤
+  }, [activeConversation?.messages]);
 
 
   // 새 대화 생성 핸들러
@@ -84,20 +85,29 @@ function ChatPage() {
 
   // 사이드바에서 특정 대화 선택시
   const handleSelectConversation = async (id) => {
-        setActiveConversationId(id);
-        // 선택적으로, 상세 내용을 다시 불러올 수 있습니다.
-        // 하지만 이미 conversations 상태에 메시지가 있다면 생략 가능.
-        try {
-            const response = await fetchConversationDetail(id);
-            const detail = response.data;
-            setConversations(prev => 
-                prev.map(c => c.id === id ? { ...c, messages: detail.messages } : c)
-            );
-        } catch (error) {
-            console.error("대화 상세 정보 로딩 실패:", error);
-        }
+    setActiveConversationId(id);
+
+    try {
+      const response = await fetchConversationDetail(id);
+      const detail = response.data;
+      setConversations(prev =>
+        prev.map(c => c.id === id ? { ...c, messages: detail.messages } : c)
+      );
+    } catch (error) {
+      console.error("대화 상세 정보 로딩 실패:", error);
+    }
   };
-  
+
+  const handleModeSwitch = (mode) => {
+    if (!isLoggedIn) {
+      navigate("/login");
+      return;
+    }
+    setChatMode(mode);
+    if (mode === "voiceChat") {
+      setActiveConversationId(null);
+    }
+  };
 
   // 스트리밍을 통한 메시지 전송
   const handleSendMessage = async () => {
@@ -108,8 +118,7 @@ function ChatPage() {
     setInput("");
     setIsSending(true);
 
-
-    // 활성대화가 없으면 생성
+    // 활성 대화가 없으면 생성
     if (!currentConvId) {
       try {
         const response = await createConversation();
@@ -127,25 +136,25 @@ function ChatPage() {
     // 사용자 메시지를 ui 에 반영
     const userMessage = {
       id: Date.now(),
-      text: userMessageText,
+      message: userMessageText,
       sender: "user"
     };
 
     setConversations(prev =>
       prev.map(c =>
-        c.id === currentConvId 
-        ? {...c, messages: [...(c.messages || []), userMessage]}
-        : c
+        c.id === currentConvId
+          ? { ...c, messages: [...(c.messages || []), userMessage] }
+          : c
       )
     );
 
     // AI 응답 메시지 placeholder 추가
     const aiMessageId = Date.now() + 1;
-    const aiMessagePlaceholder = { id: aiMessageId, text: "...", sender: "ai" };
+    const aiMessagePlaceholder = { id: aiMessageId, message: "...", sender: "ai" };
     setConversations(prev =>
-        prev.map(c =>
-            c.id === currentConvId ? { ...c, messages: [...c.messages, aiMessagePlaceholder] } : c
-        )
+      prev.map(c =>
+        c.id === currentConvId ? { ...c, messages: [...c.messages, aiMessagePlaceholder] } : c
+      )
     );
 
     // 스트리밍 시작
@@ -159,8 +168,8 @@ function ChatPage() {
               const lastMessage = c.messages[c.messages.length - 1];
               // placeholder를 실제 AI 응답으로 교체하며 텍스트 누적
               if (lastMessage.id === aiMessageId) {
-                const newText = lastMessage.text === "..." ? token : lastMessage.text + token;
-                const updatedMessages = [...c.messages.slice(0, -1), { ...lastMessage, text: newText }];
+                const newText = lastMessage.message === "..." ? token : lastMessage.message + token;
+                const updatedMessages = [...c.messages.slice(0, -1), { ...lastMessage, message: newText }];
                 return { ...c, messages: updatedMessages };
               }
             }
@@ -174,8 +183,8 @@ function ChatPage() {
         setConversations(prev =>
           prev.map(c => {
             if (c.id === currentConvId) {
-                const updatedMessages = [...c.messages.slice(0, -1), { ...aiMessagePlaceholder, text: "오류가 발생했습니다." }];
-                return { ...c, messages: updatedMessages };
+              const updatedMessages = [...c.messages.slice(0, -1), { ...aiMessagePlaceholder, message: "오류가 발생했습니다." }];
+              return { ...c, messages: updatedMessages };
             }
             return c;
           })
@@ -190,16 +199,6 @@ function ChatPage() {
     );
   };
 
-  const handleModeSwitch = (mode) => {
-    if (!isLoggedIn) {
-      navigate("/login");
-      return;
-    }
-    setChatMode(mode);
-    if (mode === "voiceChat") {
-      setActiveConversationId(null);
-    }
-  };
 
   // const renderChatContent = () => {
   //   if (chatMode === "voiceChat") {
@@ -230,10 +229,19 @@ function ChatPage() {
       <input id="my-drawer" type="checkbox" className="drawer-toggle" />
       <div className="drawer-content flex flex-col h-screen">
         <Navbar />
-        <main ref={mainContentRef} className="flex-1 overflow-y-auto p-4">          
-          {activeConversation?.messages?.map((message) => (
-             <ChatMessage key={message.id} message={message} />
-          ))}
+        <main ref={mainContentRef} className="flex-1 overflow-y-auto p-4">
+          {/* 활성화된 대화가 없거나, 메시지 배열이 비어있는 경우 안내 문구 표시 */}
+          {(!activeConversation || !activeConversation.messages || activeConversation.messages.length === 0)
+           ? (
+            <p className="text-gray-400 text-center mt-10">
+              새로운 대화를 시작해보세요 ✨
+            </p>
+          ) : (
+            // 메시지가 하나라도 있는 경우, 메시지 목록을 렌더링
+            activeConversation.messages.map((message) => (
+              <ChatMessage key={message.id} message={message} />
+            ))
+          )}
         </main>
         <ChatInput
           input={input}
@@ -252,6 +260,6 @@ function ChatPage() {
       />
     </div>
   );
-}  
+}
 
 export default ChatPage;

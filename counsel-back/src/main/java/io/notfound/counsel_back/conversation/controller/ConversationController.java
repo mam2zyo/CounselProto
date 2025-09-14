@@ -8,7 +8,6 @@ import io.notfound.counsel_back.conversation.service.ChatService;
 import io.notfound.counsel_back.conversation.service.ConversationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -51,14 +50,7 @@ public class ConversationController {
         String email = userDetails.getUsername();
         List<ConversationListResponse> conversations = conversationService.getConversationsByUser(email);
 
-        //디버깅 코드
-        System.out.println("조회된 대화 개수: " + conversations.size());
-        if (!conversations.isEmpty()) {
-            System.out.println("첫 번째 대화 제목: " + conversations.get(0).getTitle());
-        }
-
         return ResponseEntity.ok(conversations);
-//        return ResponseEntity.ok(conversations);
     }
 
     // 특정 대화 상세 조회

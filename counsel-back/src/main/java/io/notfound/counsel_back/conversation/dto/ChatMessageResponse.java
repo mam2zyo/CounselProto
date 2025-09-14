@@ -11,6 +11,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class ChatMessageResponse {
     private Long id;
-    private String text;
+    private String message;
     private String sender;
 }

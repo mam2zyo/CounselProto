@@ -3,6 +3,7 @@ package io.notfound.counsel_back.conversation.service;
 import io.notfound.counsel_back.conversation.dto.ChatRequest;
 import io.notfound.counsel_back.conversation.entity.ChatMessage;
 import io.notfound.counsel_back.conversation.entity.Conversation;
+import io.notfound.counsel_back.conversation.entity.Sender;
 import io.notfound.counsel_back.conversation.repository.ChatMessageRepository;
 import io.notfound.counsel_back.conversation.repository.ConversationRepository;
 import io.notfound.counsel_back.user.entity.User;
@@ -31,9 +32,8 @@ public class ChatService {
 
     private final OpenAiChatModel openAiChatModel;
     private final ChatMemoryRepository chatMemoryRepository;
-    private final UserRepository userRepository;
-    private final ConversationRepository conversationRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final ConversationRepository conversationRepository;
     private final ConversationService conversationService;
 
     @Transactional
@@ -48,9 +48,11 @@ public class ChatService {
                                 HttpStatus.NOT_FOUND, "대화를 찾을 수 없습니다." + conversationIdLong)
                         );
 
-        ChatMessage userChatMessage = new ChatMessage(MessageType.USER, messageText, conversation);
-        conversation.addChatMessage(userChatMessage);
-        chatMessageRepository.save(userChatMessage);
+        // request로 받은 message를 통해 ChatMessage 객체 생성 후, conversation 객체에 추가
+        // 이후 개별 레파지토리에 저장하여 영속화
+        ChatMessage userMessage = new ChatMessage(Sender.USER, messageText, conversation);
+        conversation.addChatMessage(userMessage);
+        chatMessageRepository.save(userMessage);
         conversationRepository.save(conversation);
 
         String conversationId = conversationIdLong.toString();
@@ -84,9 +86,9 @@ public class ChatService {
                     String fullAiResponse = responseBuffer.toString();
 
                     // AI 메시지 저장
-                    ChatMessage aiChatMessage = new ChatMessage(MessageType.ASSISTANT, fullAiResponse, conversation);
-                    conversation.addChatMessage(aiChatMessage);
-                    chatMessageRepository.save(aiChatMessage);
+                    ChatMessage aiMessage = new ChatMessage(Sender.AI, fullAiResponse, conversation);
+                    conversation.addChatMessage(aiMessage);
+                    chatMessageRepository.save(aiMessage);
                     conversationRepository.save(conversation);
 
                     chatMemory.add(conversationId, new AssistantMessage(fullAiResponse));

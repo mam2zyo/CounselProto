@@ -41,7 +41,6 @@ public class Conversation {
     public void addChatMessage(ChatMessage chatMessage) {
         this.chatMessages.add(chatMessage);
         chatMessage.setConversation(this);
-
     }
 
     public void updateTitle(String title) { this.title = title; }

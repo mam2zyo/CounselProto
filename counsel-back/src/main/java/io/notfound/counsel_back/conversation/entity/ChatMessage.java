@@ -4,14 +4,10 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.jetbrains.annotations.NotNull;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 @Entity
 @Getter
@@ -19,7 +15,7 @@ import java.util.Map;
 @NoArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
 @Table(indexes = @Index(name = "idx_conversation_created_at", columnList = "conversation_id, createdAt"))
-public class ChatMessage implements Message {
+public class ChatMessage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,35 +23,23 @@ public class ChatMessage implements Message {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private MessageType type;
+    private Sender sender;
+
+    @Lob
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String message;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "conversation_id")
     private Conversation conversation;
 
-    @Lob
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String text;
-
     @CreatedDate
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    public ChatMessage(MessageType type, String text, Conversation conversation) {
-        this.type = type;
-        this.text = text;
+    public ChatMessage(Sender sender, String message, Conversation conversation) {
+        this.sender = sender;
+        this.message = message;
         this.conversation = conversation;
-    }
-
-    @NotNull
-    @Override
-    public MessageType getMessageType() { return type; }
-
-    @Override
-    public String getText() { return text; }
-
-    @Override
-    public Map<String, Object> getMetadata() {
-        return Map.of();
     }
 }

@@ -124,7 +124,7 @@ public class ConversationService {
     private ConversationDetailResponse convertToDetailDto(Conversation conversation) {
         List<ChatMessageResponse> chatMessages = conversation.getChatMessages().stream()
                 .map(msg -> new ChatMessageResponse(
-                        msg.getId(), msg.getText(), msg.getMessageType().name())
+                        msg.getId(), msg.getMessage(), msg.getSender().name())
                 )
                 .collect(Collectors.toList());
         return new ConversationDetailResponse(
