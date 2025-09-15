@@ -1,5 +1,4 @@
 // src/components/Sidebar.jsx
-// setConversations, setActiveConversationId를 직접 받지 않도록 수정
 function Sidebar({
   conversations,
   activeConversationId,
@@ -7,7 +6,6 @@ function Sidebar({
   onSelectConversation, // '선택' 이벤트를 알릴 함수 추가
   onDeleteConversation, // '삭제' 이벤트를 알릴 함수 추가
 }) {
-
   // Sidebar는 더 이상 상태를 직접 변경하지 않습니다.
   // 모든 핸들러는 부모(ChatPage)에게 받은 함수를 호출하는 역할만 합니다.
 
@@ -25,28 +23,29 @@ function Sidebar({
         </button>
 
         {/* conversations가 배열이 아닐 경우를 대비한 방어 코드 추가 */}
-        {Array.isArray(conversations) && conversations.map((c) => (
-          <div
-            key={c.id}
-            className={`flex items-center justify-between mb-2 p-2 rounded-lg hover:bg-base-200 ${
-              activeConversationId === c.id ? "bg-base-200 font-bold" : ""
-            }`}
-          >
-            <button
-              className="flex-1 text-left btn btn-ghost p-0 hover:bg-transparent"
-              onClick={() => onSelectConversation(c.id)} // 부모에게 알림
+        {Array.isArray(conversations) &&
+          conversations.map((c) => (
+            <div
+              key={c.id}
+              className={`flex items-center justify-between mb-2 p-2 rounded-lg hover:bg-base-200 ${
+                activeConversationId === c.id ? "bg-base-200 font-bold" : ""
+              }`}
             >
-              {c.title || "새로운 고민 상담"} {/* title이 null일 경우 대비 */}
-            </button>
+              <button
+                className="flex-1 text-left btn btn-ghost p-0 hover:bg-transparent"
+                onClick={() => onSelectConversation(c.id)} // 부모에게 알림
+              >
+                {c.title || "새로운 고민 상담"} {/* title이 null일 경우 대비 */}
+              </button>
 
-            <button
-              className="btn btn-xs btn-error ml-2"
-              onClick={() => onDeleteConversation(c.id)} // 부모에게 알림
-            >
-              🗑
-            </button>
-          </div>
-        ))}
+              <button
+                className="btn btn-xs btn-error ml-2"
+                onClick={() => onDeleteConversation(c.id)} // 부모에게 알림
+              >
+                🗑
+              </button>
+            </div>
+          ))}
       </div>
     </div>
   );
@@ -58,7 +57,7 @@ export default Sidebar;
 // import React from "react";
 
 // function Sidebar({
-//   conversations,  
+//   conversations,
 //   activeConversationId,
 //   onNewConversation,
 //   onSelectConversation,

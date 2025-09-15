@@ -23,8 +23,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -55,6 +57,7 @@ public class ChatService {
         chatMessageRepository.save(userMessage);
         conversationRepository.save(conversation);
 
+        // ChatMemory에 userMessage를 저장
         String conversationId = conversationIdLong.toString();
 
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
@@ -63,37 +66,43 @@ public class ChatService {
                 .build();
         chatMemory.add(conversationId, new UserMessage(messageText));
 
-        // 옵션
+        // 프롬프트 호출을 위한 옵션 설정
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .model("gpt-4.1-nano")
-                .temperature(0.7)
                 .build();
 
         // 프롬프트
         Prompt prompt = new Prompt(chatMemory.get(conversationId), options);
-
-        // 응답 메시지를 저장할 임시 버퍼
-        StringBuilder responseBuffer = new StringBuilder();
-
-        // 요청 및 응답
-        return openAiChatModel.stream(prompt)
-                .mapNotNull(response -> {
+        
+        // ai 모델에 .stream() 호출 후 컨터롤러 측과 DB 양쪽이 응답을 수신할 수 있도록 .share() 호출
+        Flux<String> sharedStream = openAiChatModel.stream(prompt)
+                .flatMap(response -> {
                     String token = response.getResult().getOutput().getText();
-                    responseBuffer.append(token);
-                    return token;
+                    // token이 null이 아니면 Mono.just로 감싸서 반환, null이면 Mono.empty()를 반환하여 필터링
+                    return token != null ? Mono.just(token) : Mono.empty();
                 })
-                .doOnComplete(() -> {
-                    String fullAiResponse = responseBuffer.toString();
+                .share();
+        
+        // DB 쓰기 쪽 - 스트림을 모두 수신 후 ChatMessage, Conversation, ChatMemory에 각각 저장
+        sharedStream
+                .collect(Collectors.joining(""))
+                .flatMap(fullAiResponse -> {                    
+                    if (!fullAiResponse.isEmpty()) {
+                        ChatMessage aiMessage = new ChatMessage(Sender.AI, fullAiResponse, conversation);
+                        conversation.addChatMessage(aiMessage);
+                        chatMessageRepository.save(aiMessage);
+                        conversationRepository.save(conversation);
 
-                    // AI 메시지 저장
-                    ChatMessage aiMessage = new ChatMessage(Sender.AI, fullAiResponse, conversation);
-                    conversation.addChatMessage(aiMessage);
-                    chatMessageRepository.save(aiMessage);
-                    conversationRepository.save(conversation);
+                        chatMemory.add(conversationId, new AssistantMessage(fullAiResponse));
+                        chatMemoryRepository.saveAll(conversationId, chatMemory.get(conversationId));
+                    }
+                    return Mono.empty();
+                })
+                .doOnError(e -> System.err.println("DB 저장 중 오류 발생: " + e.getMessage()))
+                .subscribe();
 
-                    chatMemory.add(conversationId, new AssistantMessage(fullAiResponse));
-                    chatMemoryRepository.saveAll(conversationId, chatMemory.get(conversationId));
-                });
+        // Controller 로 전달되는 스트림 - 이후 프론트엔드에서 fetch + readableStream으로 처리
+        return sharedStream;
     }
 
     @Transactional
