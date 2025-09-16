@@ -23,8 +23,10 @@ public class Post {
     @Lob
     private String content;
 
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PostComment> comments = new ArrayList<>();
 
@@ -35,10 +37,15 @@ public class Post {
     public void addComment(PostComment comment) {
         this.comments.add(comment);
     }
-    
+
     public void addAttachment(Attachment attachment) {
         attachments.add(attachment);
         attachment.setPost(this);
     }
 
+    // 제목, 내용 수정 메서드 추가 (setter 대체)
+    public void update(String title, String content) {
+        this.title = title;
+        this.content = content;
+    }
 }

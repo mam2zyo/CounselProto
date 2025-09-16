@@ -62,7 +62,7 @@ function ChatInput({
         {input.length > 0 ? (
           <button
             className="btn btn-info btn-circle"
-            onClick={handleSendMessage}
+            onClick={onSendMessageClick}
           >
             <SendIcon />
           </button>

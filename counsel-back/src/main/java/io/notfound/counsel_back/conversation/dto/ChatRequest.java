@@ -1,4 +1,4 @@
-package io.notfound.counsel_back.consultation.dto;
+package io.notfound.counsel_back.conversation.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -8,7 +8,7 @@ import lombok.Setter;
 @Setter
 public class ChatRequest {
 
-    private Long ConsultationId;
+    private Long conversationId;
 
     @NotBlank(message = "메시지를 입력해주세요.")
     private String message;
