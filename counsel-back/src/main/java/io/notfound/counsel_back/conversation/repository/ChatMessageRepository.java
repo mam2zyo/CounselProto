@@ -1,8 +1,7 @@
-package io.notfound.counsel_back.consultation.repository;
+package io.notfound.counsel_back.conversation.repository;
 
+import io.notfound.counsel_back.conversation.entity.ChatMessage;
 import org.springframework.data.jpa.repository.JpaRepository;
-
-import io.notfound.counsel_back.consultation.entity.ChatMessage;
 
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 }

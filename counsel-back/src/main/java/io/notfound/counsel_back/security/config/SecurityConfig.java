@@ -174,7 +174,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/login/oauth2/code/**").permitAll()
                         // 토큰 재발급 URL 접근 허용
                         .requestMatchers(HttpMethod.POST, "/api/auth/reissue").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/chat/**").permitAll()
+                        .requestMatchers("/api/conversations/**").permitAll()
                         // 그 외 모든 요청은 인증된 사용자만 접근 가능
                         .anyRequest().authenticated()
                 )
