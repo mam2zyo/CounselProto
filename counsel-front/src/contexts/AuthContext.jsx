@@ -8,7 +8,6 @@ export function AuthProvider({ children }) {
     localStorage.getItem("accessToken")
   );
   const navigate = useNavigate();
-
   const isLoggedIn = !!accessToken;
 
   useEffect(() => {
@@ -21,17 +20,18 @@ export function AuthProvider({ children }) {
 
   const login = (token) => {
     setAccessToken(token);
-    navigate("/");
+    navigate("/board"); // 로그인 후 게시판 페이지로 이동
   };
 
   const logout = () => {
     setAccessToken(null);
-    // setrefeshToken(null);
   };
 
-  const value = { isLoggedIn, accessToken, login, logout };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ isLoggedIn, accessToken, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
