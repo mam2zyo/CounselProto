@@ -21,8 +21,3 @@ export const logout = () => {
 export const refresh = () => {
   return apiClient.post('/refresh');
 }
-
-// fetch('/api/auth/refresh', {
-//   method: 'POST',
-//   credentials: 'include',
-// })
