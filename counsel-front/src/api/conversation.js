@@ -1,24 +1,10 @@
 // src/api/conversation.js
 import axios from "axios";
 
-// import { fetchEventSource } from '@microsoft/fetch-event-source';
-// axios 가 eventsource 를 지원하지 않아 별개로  url 지정
-// const BASE_URL = '/api/conversations';
-
 const apiClient = axios.create({
-    baseURL: '/api/conversations'
+    baseURL: '/api/conversations',
+    withCredentials: true
 });
-
-apiClient.interceptors.request.use(config => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-}, error => {
-    return Promise.reject(error);
-})
-
 
 // 모든 대화 목록 (GET /api/conversations)
 export const fetchConversations = () => {
@@ -47,20 +33,18 @@ export const deleteConversation = (id) => {
 
 
 export const streamChat = async (conversationId, userMessage, onMessage, onError, onComplete) => {
-    try {
-        // 토큰을 가져와서 헤더에 설정
-        const token = localStorage.getItem('accessToken');
+    try {        
         
         const response = await fetch('/api/conversations/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': token ? `Bearer ${token}` : '',
             },
             body: JSON.stringify({
                 conversationId: conversationId,
                 message: userMessage
             }),
+            credentials: 'include'
         });
 
         if (!response.ok) {
