@@ -1,4 +1,4 @@
-package io.notfound.counsel_back.security.dto;
+package io.notfound.counsel_back.auth.dto;
 
 import lombok.Getter;
 import lombok.Setter;

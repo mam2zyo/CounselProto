@@ -1,7 +1,9 @@
+// src/api/auth.js
 import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: '/api/auth' // Vite 개발 서버의 프록시 설정을 이용할 예정
+  baseURL: '/api/auth', 
+  withCredentials: true
 });
 
 export const signup = (email, password) => {
@@ -15,3 +17,12 @@ export const login = (email, password) => {
 export const logout = () => {
   return apiClient.post('/logout');
 };
+
+export const refresh = () => {
+  return apiClient.post('/refresh');
+}
+
+// fetch('/api/auth/refresh', {
+//   method: 'POST',
+//   credentials: 'include',
+// })
