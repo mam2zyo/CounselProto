@@ -1,4 +1,4 @@
-package io.notfound.counsel_back.security.service;
+package io.notfound.counsel_back.security.core;
 
 import io.notfound.counsel_back.user.entity.User;
 import io.notfound.counsel_back.user.repository.UserRepository;

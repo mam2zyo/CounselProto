@@ -15,3 +15,7 @@ export const login = (email, password) => {
 export const logout = () => {
   return apiClient.post('/logout');
 };
+fetch('/api/auth/refresh', {
+  method: 'POST',
+  credentials: 'include',
+})
