@@ -2,13 +2,9 @@
 import axios from "axios";
 
 const apiClient = axios.create({
-  baseURL: "/api/board",
+    baseURL: '/api/conversations',
+    withCredentials: true
 });
-
-// 요청 시 JWT 자동 헤더 설정
-const setAuthHeader = (token) => {
-  apiClient.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-};
 
 export const getAllPosts = (token) => {
   setAuthHeader(token);
