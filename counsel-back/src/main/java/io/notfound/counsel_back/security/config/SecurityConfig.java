@@ -48,11 +48,11 @@ public class SecurityConfig {
         auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup", "/api/auth/refresh").permitAll()
-                .requestMatchers(HttpMethod.GET, "/oauth2/authorization/**", "/login/oauth2/code/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/oauth2/authorization/**", "/login/oauth2/code/**", "/login").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/conversations/**").permitAll()
                 .requestMatchers("/error").permitAll()
-                .anyRequest().authenticated();
+                .anyRequest().authenticated(); // 나머지 모든 요청은 인증 필요
     }
 
     private void configureOAuth2Login(org.springframework.security.config.annotation.web.configurers.oauth2.client.OAuth2LoginConfigurer<HttpSecurity> oauth2) {
