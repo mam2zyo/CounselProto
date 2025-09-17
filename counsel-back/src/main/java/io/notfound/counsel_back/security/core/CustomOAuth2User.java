@@ -22,6 +22,9 @@ public class CustomOAuth2User implements OAuth2User {
     private final String registrationId;
 
     public CustomOAuth2User(User user, Map<String, Object> attributes, String registrationId) {
+        if (user == null) {
+            throw new IllegalArgumentException("User cannot be null");
+        }
         this.user = user;
         this.attributes = attributes;
         this.registrationId = registrationId;
@@ -34,22 +37,50 @@ public class CustomOAuth2User implements OAuth2User {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name()));
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
     }
 
     @Override
     public String getName() {
         // OAuth2User의 nameAttributeKey와 매칭될 이름을 반환합니다.
-        // Google의 경우 'sub', Naver의 경우 'id'를 고유 식별자로 사용합니다.
-        if ("google".equals(registrationId)) {
-            return (String) attributes.get("sub");
-        } else if ("naver".equals(registrationId)) {
-            // 네이버는 'response'라는 Map 안에 'id'가 있습니다.
-            Map<String, Object> naverAttributes = (Map<String, Object>) attributes.get("response");
-            if (naverAttributes != null) {
-                return (String) naverAttributes.get("id");
-            }
+        // providerId를 직접 사용하는 것이 더 안전합니다.
+        if (user.getProviderId() != null) {
+            return user.getProviderId();
         }
-        return null;
+
+        // 만약 providerId가 null이라면 attributes에서 직접 가져옵니다.
+        switch (registrationId.toLowerCase()) {
+            case "google":
+                return (String) attributes.get("sub");
+            case "naver":
+                Map<String, Object> naverAttributes = (Map<String, Object>) attributes.get("response");
+                if (naverAttributes != null) {
+                    return (String) naverAttributes.get("id");
+                }
+                return user.getEmail();
+            default:
+                return user.getEmail();
+        }
+    }
+
+    /**
+     * 사용자 ID를 반환합니다.
+     */
+    public Long getUserId() {
+        return user.getId();
+    }
+
+    /**
+     * 사용자 이메일을 반환합니다.
+     */
+    public String getEmail() {
+        return user.getEmail();
+    }
+
+    /**
+     * 사용자 이름을 반환합니다.
+     */
+    public String getUserName() {
+        return user.getUserName();
     }
 }

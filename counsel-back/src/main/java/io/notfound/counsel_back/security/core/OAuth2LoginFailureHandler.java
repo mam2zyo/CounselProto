@@ -9,6 +9,8 @@ import org.springframework.security.web.authentication.AuthenticationFailureHand
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 /**
  * OAuth2 로그인 실패 시 처리하는 핸들러
@@ -22,9 +24,21 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
                                         HttpServletResponse response,
                                         AuthenticationException exception) throws IOException, ServletException {
 
-        log.error("OAuth2 로그인 실패: {}", exception.getMessage());
+        log.error("OAuth2 로그인 실패: {}", exception.getMessage(), exception);
 
-        // 에러 메시지와 함께 프론트엔드로 리다이렉트
-        response.sendRedirect("http://localhost:3000/oauth/error?message=" + exception.getMessage());
+        try {
+            // 에러 메시지 URL 인코딩
+            String encodedMessage = URLEncoder.encode(exception.getMessage(), StandardCharsets.UTF_8);
+
+            // 프론트엔드로 리다이렉트 (포트 5173으로 통일)
+            String redirectUrl = "http://localhost:5173/login?error=oauth2&message=" + encodedMessage;
+
+            log.info("OAuth2 실패 리다이렉트: {}", redirectUrl);
+            response.sendRedirect(redirectUrl);
+
+        } catch (Exception e) {
+            log.error("OAuth2 실패 처리 중 오류 발생", e);
+            response.sendRedirect("http://localhost:5173/login?error=oauth2");
+        }
     }
 }
