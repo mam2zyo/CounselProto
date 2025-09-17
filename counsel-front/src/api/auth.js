@@ -1,7 +1,9 @@
-import axios from "axios";
+// src/api/auth.js
+import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: "/api/auth",
+  baseURL: '/api/auth', 
+  withCredentials: true
 });
 
 export const signup = (email, password) => {
@@ -13,5 +15,9 @@ export const login = (email, password) => {
 };
 
 export const logout = () => {
-  return apiClient.post("/logout");
+  return apiClient.post('/logout');
 };
+
+export const refresh = () => {
+  return apiClient.post('/refresh');
+}

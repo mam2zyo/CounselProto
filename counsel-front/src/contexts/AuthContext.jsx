@@ -1,37 +1,52 @@
 import { createContext, useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { refresh as refreshApi, logout as logoutApi } from "../api/auth";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [accessToken, setAccessToken] = useState(
-    localStorage.getItem("accessToken")
-  );
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const isLoggedIn = !!accessToken;
-
+  
   useEffect(() => {
-    if (accessToken) {
-      localStorage.setItem("accessToken", accessToken);
-    } else {
-      localStorage.removeItem("accessToken");
+    const checkAuthStatus = async () => {
+      try {
+        await refreshApi();
+        setIsLoggedIn(true);
+      } catch (error) {
+        setIsLoggedIn(false);
+        console.log("자동 로그인 실패");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkAuthStatus();
+  }, []);
+
+  const login = () => {
+    setIsLoggedIn(true);
+    navigate("/");
+  }
+
+  const logout = async () => {
+    try {
+      await logoutApi();
+    } catch (error) {
+      console.log("로그 아웃 실패", error);
+    } finally {
+      setIsLoading(false);
+      navigate('/login');
     }
-  }, [accessToken]);
-
-  const login = (token) => {
-    setAccessToken(token);
-    navigate("/board"); // 로그인 후 게시판 페이지로 이동
   };
 
-  const logout = () => {
-    setAccessToken(null);
-  };
+  const value = { isLoggedIn, login, logout, isLoading };
 
-  return (
-    <AuthContext.Provider value={{ isLoggedIn, accessToken, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
