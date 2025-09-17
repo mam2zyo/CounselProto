@@ -51,13 +51,13 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
             CookieUtil.addRefreshToken(response, refreshToken);
 
             // 4. 프론트엔드로 안전하게 리다이렉트 (토큰 없이!)
-            response.sendRedirect("http://localhost:3000/oauth/success");
+            response.sendRedirect("http://localhost:5173/");
 
             log.info("OAuth2 로그인 처리 완료: {}", email);
 
         } catch (Exception e) {
             log.error("OAuth2 로그인 처리 중 오류 발생", e);
-            response.sendRedirect("http://localhost:3000/oauth/error");
+            response.sendRedirect("http://localhost:5173/login");
         }
     }
 }

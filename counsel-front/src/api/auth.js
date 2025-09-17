@@ -7,11 +7,11 @@ const apiClient = axios.create({
 });
 
 export const signup = (email, password) => {
-  return apiClient.post('/signup', { email, password });
+  return apiClient.post("/signup", { email, password });
 };
 
 export const login = (email, password) => {
-  return apiClient.post('/login', { email, password });
+  return apiClient.post("/login", { email, password });
 };
 
 export const logout = () => {
@@ -21,8 +21,3 @@ export const logout = () => {
 export const refresh = () => {
   return apiClient.post('/refresh');
 }
-
-// fetch('/api/auth/refresh', {
-//   method: 'POST',
-//   credentials: 'include',
-// })

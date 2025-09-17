@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import ChatMessage from "../components/ChatMessage";
 import ChatInput from "../components/ChatInput";
+import { VoiceChatIcon } from "../components/Icons";
 import {
   fetchConversations,
   createConversation,
@@ -193,55 +194,31 @@ function ChatPage() {
       },
       () => { // onComplete: 스트림 완료 시
         setIsSending(false);
-        // console.log("대화 목록을 새로고칩니다.");
-        // loadConversations();
       }
     );
   };
-
-
-  // const renderChatContent = () => {
-  //   if (chatMode === "voiceChat") {
-  //     return (
-  //       <div className="flex flex-col items-center justify-center h-full text-base-content/70">
-  //         <VoiceChatIcon />
-  //         <p className="mt-4 text-lg">음성 대화 모드가 활성화되었습니다.</p>
-  //         <p>마이크 버튼을 눌러 대화를 시작하세요.</p>
-  //       </div>
-  //     );
-  //   }
-
-  //   if (!activeConversation) {
-  //     return (
-  //       <p className="text-gray-400 text-center mt-10">
-  //         새로운 대화를 시작해보세요 ✨
-  //       </p>
-  //     );
-  //   }
-
-  //   return activeConversation.messages.map((message) => (
-  //     <ChatMessage key={message.id} message={message} />
-  //   ));
-  // };
 
   return (
     <div className="drawer lg:drawer-open">
       <input id="my-drawer" type="checkbox" className="drawer-toggle" />
       <div className="drawer-content flex flex-col h-screen">
         <Navbar />
+
         <main ref={mainContentRef} className="flex-1 overflow-y-auto p-4">
           {/* 활성화된 대화가 없거나, 메시지 배열이 비어있는 경우 안내 문구 표시 */}
           {(!activeConversation || !activeConversation.messages || activeConversation.messages.length === 0)
-           ? (
-            <p className="text-gray-400 text-center mt-10">
-              새로운 대화를 시작해보세요 ✨
-            </p>
-          ) : (
-            // 메시지가 하나라도 있는 경우, 메시지 목록을 렌더링
-            activeConversation.messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
-            ))
-          )}
+            ? (
+              <div className="flex items-center justify-center h-screen">
+                <p className="text-gray-400 text-center -mt-50">
+                  새로운 대화를 시작해보세요 ✨
+                </p>
+              </div>
+            ) : (
+              // 메시지가 하나라도 있는 경우, 메시지 목록을 렌더링
+              activeConversation.messages.map((message) => (
+                <ChatMessage key={message.id} message={message} />
+              ))
+            )}
         </main>
         <ChatInput
           input={input}
@@ -263,3 +240,29 @@ function ChatPage() {
 }
 
 export default ChatPage;
+
+// const renderChatContent = () => {
+//   if (chatMode === "voiceChat") {
+//     return (
+//       <div className="flex flex-col items-center justify-center h-full text-base-content/70">
+//         <VoiceChatIcon />
+//         <p className="mt-4 text-lg">음성 대화 모드가 활성화되었습니다.</p>
+//         <p>마이크 버튼을 눌러 대화를 시작하세요.</p>
+//       </div>
+//     );
+//   }
+
+//   if (!activeConversation) {
+//     return (
+//       <div className="flex items-center justify-center h-screen">
+//         <p className="text-gray-400 text-center -mt-50">
+//           새로운 대화를 시작해보세요 ✨
+//         </p>
+//       </div>
+//     );
+//   }
+
+//   return activeConversation.messages.map((message) => (
+//     <ChatMessage key={message.id} message={message} />
+//   ));
+// };
