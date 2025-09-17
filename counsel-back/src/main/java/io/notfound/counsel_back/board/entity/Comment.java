@@ -1,5 +1,6 @@
 package io.notfound.counsel_back.board.entity;
 
+import io.notfound.counsel_back.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -7,8 +8,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Getter
-@Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
 public class Comment {
@@ -17,15 +17,32 @@ public class Comment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String content;
 
-    private String author; // 임시로 작성자 필드 추가, 추후 User 엔티티와 연결
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "writer_id")
+    private User writer;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
-    // 단방향 관계로 변경하여 Post.java의 addComment() 메서드와 충돌 방지
-    // 댓글은 게시글에만 종속되므로 단방향 매핑이 더 간결함
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "post_id")
     private Post post;
+
+    // Setter를 외부에서 직접 호출하지 못하도록 package-private으로 변경
+    // 연관관계 편의 메서드를 통해서만 post가 설정되도록 유도
+    void setPost(Post post) {
+        this.post = post;
+    }
+
+    @PrePersist
+    public void createdAt() {
+        this.createdAt = LocalDateTime.now();
+    }
+
+    // 내용 수정을 위한 메서드
+    public void update(String content) {
+        this.content = content;
+    }
 }

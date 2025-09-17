@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CommentResponseDto {
+public class CommentResponse {
     private Long id;
     private String content;
     private String author;

@@ -10,13 +10,13 @@ import java.util.stream.Collectors;
 
 @Getter
 @Setter
-public class PostResponseDto {
+public class PostResponse {
     private Long postId;
     private String title;
     private String content;
     private List<String> attachmentUrls;
 
-    public PostResponseDto(Post post) {
+    public PostResponse(Post post) {
         this.postId = post.getId();
         this.title = post.getTitle();
         this.content = post.getContent();

@@ -1,6 +1,5 @@
 package io.notfound.counsel_back.board.service;
 
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -15,12 +14,11 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-
 public class S3Service {
 
-    private final S3Client s3Client;  // AmazonS3 대신 S3Client 사용
+    private final S3Client s3Client;
 
-    @Value("${cloud.aws.s3.bucket}")
+    @Value("${spring.cloud.aws.s3.bucket}")
     private String bucket;
 
     public String uploadFile(MultipartFile file) {
@@ -39,7 +37,6 @@ public class S3Service {
         } catch (IOException e) {
             throw new RuntimeException("S3 업로드 실패", e);
         }
-
         // 업로드된 파일의 URL을 반환
         return s3Client.utilities().getUrl(builder -> builder.bucket(bucket).key(fileName)).toExternalForm();
     }

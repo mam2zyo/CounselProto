@@ -1,7 +1,7 @@
 package io.notfound.counsel_back.board.service;
 
-import io.notfound.counsel_back.board.dto.CommentRequestDto;
-import io.notfound.counsel_back.board.dto.CommentResponseDto;
+import io.notfound.counsel_back.board.dto.CommentRequest;
+import io.notfound.counsel_back.board.dto.CommentResponse;
 import io.notfound.counsel_back.board.entity.Comment;
 import io.notfound.counsel_back.board.entity.Post;
 import io.notfound.counsel_back.board.repository.CommentRepository;
@@ -23,19 +23,19 @@ public class CommentService {
 
     // 댓글 생성
     @Transactional
-    public CommentResponseDto createComment(Long postId, CommentRequestDto request) {
+    public CommentResponse createComment(Long postId, CommentRequest request) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new NoSuchElementException("Post not found with id: " + postId));
 
         Comment comment = Comment.builder()
                 .content(request.getContent())
-                .author(request.getAuthor())
+                .writer(request.getWriter())
                 .post(post)
                 .build();
 
         Comment savedComment = commentRepository.save(comment);
 
-        return CommentResponseDto.builder()
+        return CommentResponse.builder()
                 .id(savedComment.getId())
                 .content(savedComment.getContent())
                 .author(savedComment.getAuthor())
@@ -46,7 +46,7 @@ public class CommentService {
 
     // 특정 게시글의 모든 댓글 조회
     @Transactional(readOnly = true)
-    public List<CommentResponseDto> getCommentsByPostId(Long postId) {
+    public List<CommentResponse> getCommentsByPostId(Long postId) {
         // 특정 게시글이 존재하는지 먼저 확인
         if (!postRepository.existsById(postId)) {
             throw new NoSuchElementException("Post not found with id: " + postId);
@@ -54,7 +54,7 @@ public class CommentService {
 
         List<Comment> comments = commentRepository.findAllByPostId(postId);
         return comments.stream()
-                .map(comment -> CommentResponseDto.builder()
+                .map(comment -> CommentResponse.builder()
                         .id(comment.getId())
                         .content(comment.getContent())
                         .author(comment.getAuthor())
@@ -66,7 +66,7 @@ public class CommentService {
 
     // 댓글 수정
     @Transactional
-    public CommentResponseDto updateComment(Long commentId, CommentRequestDto request) {
+    public CommentResponse updateComment(Long commentId, CommentRequest request) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new NoSuchElementException("Comment not found with id: " + commentId));
 
@@ -74,7 +74,7 @@ public class CommentService {
         
         Comment updatedComment = commentRepository.save(comment);
 
-        return CommentResponseDto.builder()
+        return CommentResponse.builder()
                 .id(updatedComment.getId())
                 .content(updatedComment.getContent())
                 .author(updatedComment.getAuthor())

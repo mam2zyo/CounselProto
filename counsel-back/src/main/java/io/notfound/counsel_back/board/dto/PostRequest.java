@@ -8,10 +8,8 @@ import java.util.List;
 
 @Getter
 @Setter
-public class PostRequestDto {
+public class PostRequest {
     private String title;
     private String content;
-
-    // 첨부파일을 MultipartFile로 받아서 S3 업로드
     private List<MultipartFile> attachments;
 }
