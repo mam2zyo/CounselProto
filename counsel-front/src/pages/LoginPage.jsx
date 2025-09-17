@@ -82,14 +82,12 @@ function LoginPage() {
               구글로 로그인
             </button>
             <button
-  onClick={() => handleOAuthLogin("naver")}
-  className="btn flex items-center justify-center gap-3 w-full bg-[#03C75A] text-white hover:bg-[#03C75A]/90"
->
-  <SiNaver size={24} />
-  네이버로 로그인
-</button>
-
-         
+              onClick={() => handleOAuthLogin("naver")}
+              className="btn flex items-center justify-center gap-3 w-full bg-[#03C75A] text-white hover:bg-[#03C75A]/90"
+            >
+              <SiNaver size={24} />
+              네이버로 로그인
+            </button>
           </div>
 
           <div className="text-center mt-6">
@@ -97,6 +95,7 @@ function LoginPage() {
               아직 회원이 아니신가요? 회원가입
             </Link>
           </div>
+          
         </div>
       </div>
     </div>
