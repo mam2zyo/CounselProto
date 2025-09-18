@@ -10,18 +10,22 @@ import java.util.stream.Collectors;
 
 @Getter
 @Setter
-public class PostResponseDto {
+public class PostResponse {
     private Long postId;
     private String title;
     private String content;
+    private String authorName;
     private List<String> attachmentUrls;
 
-    public PostResponseDto(Post post) {
-        this.postId = post.getId();
-        this.title = post.getTitle();
-        this.content = post.getContent();
-        this.attachmentUrls = post.getAttachments().stream()
+    public static PostResponse from(Post post) {
+        PostResponse response = new PostResponse();
+        response.postId = post.getId();
+        response.title = post.getTitle();
+        response.content = post.getContent();
+        response.authorName = post.getAuthor().getUserName(); // User 엔티티에서 이름 가져오기
+        response.attachmentUrls = post.getAttachments().stream()
                 .map(Attachment::getFileUrl)
                 .collect(Collectors.toList());
+        return response;
     }
 }
