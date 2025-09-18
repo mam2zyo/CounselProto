@@ -1,32 +1,35 @@
 // src/api/board.js
-import axios from "axios";
+import axiosInstance from "./axiosInstance";
 
-const apiClient = axios.create({
-    baseURL: '/api/conversations',
-    withCredentials: true
-});
-
-export const getAllPosts = (token) => {
-  setAuthHeader(token);
-  return apiClient.get("/");
+// 모든 게시글 조회
+export const getAllPosts = () => {
+  return axiosInstance.get("/board");
 };
 
-export const getPost = (id, token) => {
-  setAuthHeader(token);
-  return apiClient.get(`/${id}`);
+// 특정 게시글 조회
+export const getPost = (id) => {
+  return axiosInstance.get(`/board/${id}`);
 };
 
-export const createPost = (postData, token) => {
-  setAuthHeader(token);
-  return apiClient.post("/", postData);
+// 게시글 생성 (파일 첨부 때문에 FormData 사용)
+export const createPost = (formData) => {
+  return axiosInstance.post("/board", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 };
 
-export const updatePost = (id, postData, token) => {
-  setAuthHeader(token);
-  return apiClient.put(`/${id}`, postData);
+// 게시글 수정 (FormData 사용)
+export const updatePost = (id, formData) => {
+  return axiosInstance.put(`/board/${id}`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
 };
 
-export const deletePost = (id, token) => {
-  setAuthHeader(token);
-  return apiClient.delete(`/${id}`);
+// 게시글 삭제
+export const deletePost = (id) => {
+  return axiosInstance.delete(`/board/${id}`);
 };
