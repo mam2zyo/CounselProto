@@ -11,4 +11,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class CommentRequest {
     private String content;
+    private String writerName; // [추가] 익명 작성자 이름
+    private String password;   // [추가] 익명 댓글 수정/삭제용 비밀번호
 }

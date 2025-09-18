@@ -27,35 +27,37 @@ public class BoardService {
     private final PostRepository postRepository;
     private final AttachmentRepository attachmentRepository;
     private final S3Service s3Service;
+    private final FilteringService filteringService; // [추가] 필터링 서비스 주입
 
     @Transactional
     public PostResponse createPost(PostRequest request, String email) {
-
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + email));
 
+        // **[추가]** 게시글 제목 및 내용 필터링
+        String filteredTitle = filteringService.filterText(request.getTitle());
+        String filteredContent = filteringService.filterText(request.getContent());
+
         Post post = Post.builder()
-                .title(request.getTitle())
+                .title(filteredTitle)
                 .author(user)
-                .content(request.getContent())
+                .content(filteredContent)
                 .build();
 
-        final Post savedPost = postRepository.save(post);
+        postRepository.save(post);
 
         if (request.getAttachments() != null) {
             for (MultipartFile file : request.getAttachments()) {
-                String fileUrl = s3Service.uploadFile(file); // 파일 S3 업로드
+                String fileUrl = s3Service.uploadFile(file);
                 Attachment attachment = Attachment.builder()
                         .fileName(file.getOriginalFilename())
                         .fileUrl(fileUrl)
-                        .post(savedPost)
+                        .post(post)
                         .build();
-
-                attachmentRepository.save(attachment);
-                savedPost.getAttachments().add(attachment);
+                post.addAttachment(attachment);
             }
         }
-        return  PostResponse.from(savedPost);
+        return PostResponse.from(post);
     }
 
     @Transactional(readOnly = true)
@@ -74,29 +76,30 @@ public class BoardService {
 
     @Transactional
     public PostResponse updatePost(Long postId, PostUpdateRequest request, String email) {
-        Post post = postRepository.findById(postId)
+        Post post = postRepository.findByIdWithAuthorAndAttachments(postId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
 
-        // 권한 확인
         if (!post.getAuthor().getEmail().equals(email)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글을 수정할 권한이 없습니다.");
         }
 
-        post.update(request.getTitle(), request.getContent());
+        // **[추가]** 수정된 제목 및 내용 필터링
+        String filteredTitle = filteringService.filterText(request.getTitle());
+        String filteredContent = filteringService.filterText(request.getContent());
 
-        // 1. 삭제 요청된 파일 처리
+        post.update(filteredTitle, filteredContent);
+
         if (request.getDeletedAttachmentUrls() != null) {
             List<Attachment> attachmentsToDelete = post.getAttachments().stream()
                     .filter(att -> request.getDeletedAttachmentUrls().contains(att.getFileUrl()))
                     .toList();
 
             for (Attachment attachment : attachmentsToDelete) {
-                s3Service.deleteFile(attachment.getFileUrl()); // S3에서 삭제
-                post.removeAttachment(attachment); // Post에서 연관관계 제거 (orphanRemoval=true로 DB에서 삭제됨)
+                s3Service.deleteFile(attachment.getFileUrl());
+                post.removeAttachment(attachment);
             }
         }
 
-        // 2. 새로 추가된 파일 처리
         if (request.getNewAttachments() != null) {
             for (MultipartFile file : request.getNewAttachments()) {
                 String fileUrl = s3Service.uploadFile(file);
@@ -105,30 +108,26 @@ public class BoardService {
                         .fileUrl(fileUrl)
                         .post(post)
                         .build();
-                post.addAttachment(attachment); // 연관관계 편의 메서드 사용
+                post.addAttachment(attachment);
             }
         }
 
-        // Post 엔티티는 dirty checking에 의해 자동 업데이트 됨
         return PostResponse.from(post);
     }
 
     @Transactional
     public void deletePost(Long id, String email) {
-        Post post = postRepository.findById(id)
+        Post post = postRepository.findByIdWithAuthorAndAttachments(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
 
-        // 권한 확인
         if (!post.getAuthor().getEmail().equals(email)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글을 삭제할 권한이 없습니다.");
         }
-        // S3 파일 먼저 삭제
+
         for (Attachment attachment : post.getAttachments()) {
             s3Service.deleteFile(attachment.getFileUrl());
         }
+
         postRepository.delete(post);
     }
 }
-
-
-

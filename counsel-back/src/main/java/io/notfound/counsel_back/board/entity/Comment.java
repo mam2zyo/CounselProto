@@ -20,9 +20,11 @@ public class Comment {
     @Column(nullable = false)
     private String content;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "writer_id")
-    private User writer;
+    @Column(nullable = false) // [추가] 작성자 이름
+    private String writerName;
+
+    @Column(nullable = false) // [추가] 비밀번호 (해시값 저장)
+    private String password;
 
     private LocalDateTime createdAt;
 
@@ -30,8 +32,6 @@ public class Comment {
     @JoinColumn(name = "post_id")
     private Post post;
 
-    // Setter를 외부에서 직접 호출하지 못하도록 package-private으로 변경
-    // 연관관계 편의 메서드를 통해서만 post가 설정되도록 유도
     void setPost(Post post) {
         this.post = post;
     }
