@@ -2,6 +2,7 @@ package io.notfound.counsel_back.board.controller;
 
 import io.notfound.counsel_back.board.dto.PostRequest;
 import io.notfound.counsel_back.board.dto.PostResponse;
+import io.notfound.counsel_back.board.dto.PostUpdateRequest;
 import io.notfound.counsel_back.board.service.BoardService;
 
 import lombok.RequiredArgsConstructor;
@@ -42,17 +43,23 @@ public class BoardController {
         return ResponseEntity.ok(responses);
     }
 
-    // [문제점 5 수정] 파일 수정을 고려하여 @ModelAttribute로 변경
     @PutMapping("/{id}")
-    public ResponseEntity<PostResponse> updatePost(@PathVariable Long id,
-                                                   @ModelAttribute PostRequest request) {
-        PostResponse response = boardService.updatePost(id, request);
+    public ResponseEntity<PostResponse> updatePost(
+            @PathVariable Long id,
+            @ModelAttribute PostUpdateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String email = userDetails.getUsername();
+        PostResponse response = boardService.updatePost(id, request, email);
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePost(@PathVariable Long id) {
-        boardService.deletePost(id);
+    public ResponseEntity<Void> deletePost(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String email = userDetails.getUsername();
+        boardService.deletePost(id, email);
         return ResponseEntity.noContent().build();
     }
 }

@@ -22,7 +22,7 @@ public class Post {
     private String title;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id") // 명시적으로 컬럼명 지정
+    @JoinColumn(name = "author_id")
     private User author;
 
     @Lob
@@ -31,9 +31,11 @@ public class Post {
 
     private LocalDateTime createdAt;
 
+    @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>();
 
+    @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Attachment> attachments = new ArrayList<>();
 
@@ -50,6 +52,19 @@ public class Post {
     public void addAttachment(Attachment attachment) {
         this.attachments.add(attachment);
         attachment.setPost(this);
+    }
+
+    // [추가] 첨부파일 제거를 위한 편의 메서드
+    public void removeAttachment(Attachment attachment) {
+        this.attachments.remove(attachment);
+        attachment.setPost(null);
+    }
+
+    // [추가] 모든 첨부파일을 제거하고 S3에서도 삭제하기 위해 파일 목록을 반환하는 메서드
+    public List<Attachment> clearAttachments() {
+        List<Attachment> removedAttachments = new ArrayList<>(this.attachments);
+        this.attachments.clear();
+        return removedAttachments;
     }
 
     // 제목, 내용 수정 메서드 (Setter 대체)
