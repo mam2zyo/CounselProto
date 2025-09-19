@@ -27,14 +27,13 @@ public class BoardService {
     private final PostRepository postRepository;
     private final AttachmentRepository attachmentRepository;
     private final S3Service s3Service;
-    private final FilteringService filteringService; // [추가] 필터링 서비스 주입
+    private final FilteringService filteringService;
 
     @Transactional
     public PostResponse createPost(PostRequest request, String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + email));
 
-        // **[추가]** 게시글 제목 및 내용 필터링
         String filteredTitle = filteringService.filterText(request.getTitle());
         String filteredContent = filteringService.filterText(request.getContent());
 
@@ -44,8 +43,7 @@ public class BoardService {
                 .content(filteredContent)
                 .build();
 
-        postRepository.save(post);
-
+        // 첨부파일을 처리하고 DB에 저장
         if (request.getAttachments() != null) {
             for (MultipartFile file : request.getAttachments()) {
                 String fileUrl = s3Service.uploadFile(file);
@@ -57,19 +55,28 @@ public class BoardService {
                 post.addAttachment(attachment);
             }
         }
+
+        postRepository.save(post);
         return PostResponse.from(post);
     }
 
     @Transactional(readOnly = true)
     public PostResponse getPost(Long id) {
-        Post post = postRepository.findById(id)
+        // N+1 문제 해결을 위해 fetch join을 사용하는 레포지토리 메서드 호출
+        Post post = postRepository.findByIdWithAuthorAndAttachments(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
         return PostResponse.from(post);
     }
 
     @Transactional(readOnly = true)
-    public List<PostResponse> getAllPosts() {
-        return postRepository.findAll().stream()
+    public List<PostResponse> getAllPosts(String keyword) {
+        List<Post> posts;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            posts = postRepository.findByTitleContainingOrContentContaining(keyword, keyword);
+        } else {
+            posts = postRepository.findAll();
+        }
+        return posts.stream()
                 .map(PostResponse::from)
                 .collect(Collectors.toList());
     }
@@ -83,7 +90,6 @@ public class BoardService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글을 수정할 권한이 없습니다.");
         }
 
-        // **[추가]** 수정된 제목 및 내용 필터링
         String filteredTitle = filteringService.filterText(request.getTitle());
         String filteredContent = filteringService.filterText(request.getContent());
 

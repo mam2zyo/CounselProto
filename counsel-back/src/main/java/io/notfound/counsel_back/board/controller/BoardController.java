@@ -38,12 +38,12 @@ public class BoardController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PostResponse>> getAllPosts() {
-        List<PostResponse> responses = boardService.getAllPosts();
+    public ResponseEntity<List<PostResponse>> getAllPosts(@RequestParam(required = false) String keyword) {
+        List<PostResponse> responses = boardService.getAllPosts(keyword);
         return ResponseEntity.ok(responses);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = {"multipart/form-data"})
     public ResponseEntity<PostResponse> updatePost(
             @PathVariable Long id,
             @ModelAttribute PostUpdateRequest request,
