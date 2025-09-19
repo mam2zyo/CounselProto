@@ -18,4 +18,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     List<Post> findByTitleContainingOrContentContaining(String titleKeyword, String contentKeyword);
 
+    // 조회수 기준으로 내림차순 정렬하여 모든 게시글을 조회
+    List<Post> findAllByOrderByViewsDesc();
+
+    // 키워드 검색과 조회수 정렬을 동시에 사용
+    List<Post> findByTitleContainingOrContentContainingOrderByViewsDesc(String titleKeyword, String contentKeyword);
 }

@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,7 +32,6 @@ public class BoardService {
     public PostResponse createPost(PostRequest request, String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + email));
-
         String filteredTitle = filteringService.filterText(request.getTitle());
         String filteredContent = filteringService.filterText(request.getContent());
 
@@ -54,25 +52,33 @@ public class BoardService {
                 post.addAttachment(attachment);
             }
         }
-
         postRepository.save(post);
         return PostResponse.from(post);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PostResponse getPost(Long id) {
         Post post = postRepository.findByIdWithAuthorAndAttachments(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
+        post.incrementViews(); // 조회수 증가
         return PostResponse.from(post);
     }
 
     @Transactional(readOnly = true)
-    public List<PostResponse> getAllPosts(String keyword) {
+    public List<PostResponse> getAllPosts(String keyword, String sort) {
         List<Post> posts;
         if (keyword != null && !keyword.trim().isEmpty()) {
-            posts = postRepository.findByTitleContainingOrContentContaining(keyword, keyword);
+            if ("views".equals(sort)) {
+                posts = postRepository.findByTitleContainingOrContentContainingOrderByViewsDesc(keyword, keyword);
+            } else {
+                posts = postRepository.findByTitleContainingOrContentContaining(keyword, keyword);
+            }
         } else {
-            posts = postRepository.findAll();
+            if ("views".equals(sort)) {
+                posts = postRepository.findAllByOrderByViewsDesc();
+            } else {
+                posts = postRepository.findAll();
+            }
         }
         return posts.stream()
                 .map(PostResponse::from)
@@ -83,27 +89,21 @@ public class BoardService {
     public PostResponse updatePost(Long postId, PostUpdateRequest request, String email) {
         Post post = postRepository.findByIdWithAuthorAndAttachments(postId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
-
         if (!post.getAuthor().getEmail().equals(email)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글을 수정할 권한이 없습니다.");
         }
-
         String filteredTitle = filteringService.filterText(request.getTitle());
         String filteredContent = filteringService.filterText(request.getContent());
-
         post.update(filteredTitle, filteredContent);
-
         if (request.getDeletedAttachmentUrls() != null) {
             List<Attachment> attachmentsToDelete = post.getAttachments().stream()
                     .filter(att -> request.getDeletedAttachmentUrls().contains(att.getFileUrl()))
                     .toList();
-
             for (Attachment attachment : attachmentsToDelete) {
                 s3Service.deleteFile(attachment.getFileUrl());
                 post.removeAttachment(attachment);
             }
         }
-
         if (request.getNewAttachments() != null) {
             for (MultipartFile file : request.getNewAttachments()) {
                 String fileUrl = s3Service.uploadFile(file);
@@ -115,7 +115,6 @@ public class BoardService {
                 post.addAttachment(attachment);
             }
         }
-
         return PostResponse.from(post);
     }
 
@@ -123,15 +122,12 @@ public class BoardService {
     public void deletePost(Long id, String email) {
         Post post = postRepository.findByIdWithAuthorAndAttachments(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
-
         if (!post.getAuthor().getEmail().equals(email)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글을 삭제할 권한이 없습니다.");
         }
-
         for (Attachment attachment : post.getAttachments()) {
             s3Service.deleteFile(attachment.getFileUrl());
         }
-
         postRepository.delete(post);
     }
 }
