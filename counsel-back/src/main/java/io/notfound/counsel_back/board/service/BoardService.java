@@ -43,7 +43,6 @@ public class BoardService {
                 .content(filteredContent)
                 .build();
 
-        // 첨부파일을 처리하고 DB에 저장
         if (request.getAttachments() != null) {
             for (MultipartFile file : request.getAttachments()) {
                 String fileUrl = s3Service.uploadFile(file);
@@ -62,7 +61,6 @@ public class BoardService {
 
     @Transactional(readOnly = true)
     public PostResponse getPost(Long id) {
-        // N+1 문제 해결을 위해 fetch join을 사용하는 레포지토리 메서드 호출
         Post post = postRepository.findByIdWithAuthorAndAttachments(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
         return PostResponse.from(post);
