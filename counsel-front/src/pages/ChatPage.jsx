@@ -6,13 +6,13 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import ChatMessage from "../components/ChatMessage";
 import ChatInput from "../components/ChatInput";
-import { VoiceChatIcon } from "../components/Icons";
+import { streamChat } from "../api/chat";
 import {
-  fetchConversations,
   createConversation,
+  updateConversation,
   deleteConversation,
-  fetchConversationDetail,
-  streamChat
+  fetchConversations,
+  fetchConversationDetail
 } from "../api/conversation";
 
 function ChatPage() {
@@ -23,13 +23,14 @@ function ChatPage() {
   // API 기반 상태 관리
   const [conversations, setConversations] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
+  const [editingConversationId, setEditingConversationId] = useState(null);
   const [input, setInput] = useState("");
   const [chatMode, setChatMode] = useState("text"); // 'text', 'voiceInput', 'voiceChat'
   const [isSending, setIsSending] = useState(false);
 
   // 현재 활성화된 대화 찾기
   const activeConversation = conversations.find(
-    (c) => c.id === activeConversationId
+    c => c.id === activeConversationId
   );
 
   // 컴포넌트 마운트 시 대화목록 불러오기
@@ -55,6 +56,16 @@ function ChatPage() {
     }
   }, [activeConversation?.messages]);
 
+  const handleModeSwitch = (mode) => {
+    if (!isLoggedIn) {
+      navigate("/login");
+      return;
+    }
+    setChatMode(mode);
+    if (mode === "voiceChat") {
+      setActiveConversationId(null);
+    }
+  };
 
   // 새 대화 생성 핸들러
   const handleNewConversation = async () => {
@@ -67,8 +78,7 @@ function ChatPage() {
       console.error("새 대화 생성 실패:", error);
     }
   };
-
-
+  
   // 대화 삭제 핸들러
   const handleDeleteConversation = async (id) => {
     if (!confirm("이 대화를 삭제하시겠습니까?")) return;
@@ -78,14 +88,44 @@ function ChatPage() {
       if (activeConversationId === id) {
         setActiveConversationId(null);
       }
+      if (editingConversationId === id) {
+        setEditingConversationId(null);
+      }
     } catch (error) {
       console.error("대화 삭제 실패:", error);
     }
   };
 
+  // 수정 시작 핸들러
+  const handleStartEdit = (id) => {
+    setEditingConversationId(id);
+  };
 
+  // 수정 취소 핸들러
+  const handleCancelEdit = () => {
+    setEditingConversationId(null);
+  };
+
+  // 대화 제목 수정 핸들러
+  const handleUpdateConversation = async (id, data) => {
+    try {
+      const response = await updateConversation(id, data);
+      const updatedConversation = response.data;
+      
+      setConversations(prev =>
+        prev.map(c => (c.id === id ? {...c, title: updatedConversation.title } : c))
+      );
+      setEditingConversationId(null);
+    } catch (error) {
+      console.error("대화 수정 실패:", error);
+      alert("대화 수정에 실패했습니다.");
+    }
+  };
+  
   // 사이드바에서 특정 대화 선택시
   const handleSelectConversation = async (id) => {
+
+    if (editingConversationId === id) return; // 수정 중 다른 대화 선택 막기
     setActiveConversationId(id);
 
     try {
@@ -97,18 +137,7 @@ function ChatPage() {
     } catch (error) {
       console.error("대화 상세 정보 로딩 실패:", error);
     }
-  };
-
-  const handleModeSwitch = (mode) => {
-    if (!isLoggedIn) {
-      navigate("/login");
-      return;
-    }
-    setChatMode(mode);
-    if (mode === "voiceChat") {
-      setActiveConversationId(null);
-    }
-  };
+  };  
 
   // 스트리밍을 통한 메시지 전송
   const handleSendMessage = async () => {
@@ -197,7 +226,7 @@ function ChatPage() {
       }
     );
   };
-
+ 
   return (
     <div className="drawer lg:drawer-open">
       <input id="my-drawer" type="checkbox" className="drawer-toggle" />
@@ -234,6 +263,10 @@ function ChatPage() {
         onNewConversation={handleNewConversation}
         onSelectConversation={handleSelectConversation}
         onDeleteConversation={handleDeleteConversation}
+        onUpdateConversation={handleUpdateConversation}
+        editingId={editingConversationId}
+        onStartEdit={handleStartEdit}
+        onCancelEdit={handleCancelEdit}        
       />
     </div>
   );

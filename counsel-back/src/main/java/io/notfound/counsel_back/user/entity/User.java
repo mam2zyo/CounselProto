@@ -18,7 +18,7 @@ import java.util.List;
 @Table(name = "users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class) // 생성/수정 시간 자동 기록
+@EntityListeners(AuditingEntityListener.class)
 public class User {
 
     @Id
@@ -28,12 +28,20 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    private String userName; // name -> userName 으로 변경
+    private String userName;
 
     private String password;
 
-    @Enumerated(EnumType.STRING) // Enum 타입을 DB에 문자열로 저장
+    @Enumerated(EnumType.STRING)
     private UserRole role;
+
+    // OAuth2 제공자 ID (Google의 sub, Naver의 id 등)
+    @Column(unique = true)
+    private String providerId;
+
+    // OAuth2 제공자 (GOOGLE, NAVER 등)
+    @Enumerated(EnumType.STRING)
+    private ProviderType provider;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Conversation> conversations = new ArrayList<>();
@@ -45,26 +53,43 @@ public class User {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    // Refresh Token 필드 추가
-    @Column(length = 500) // 토큰 길이를 넉넉하게 설정
+    @Column(length = 500)
     private String refreshToken;
 
     @Builder
-    public User(String email, String name, String password, UserRole role) {
+    public User(String email, String userName, String password, UserRole role,
+                String providerId, ProviderType provider) {
         this.email = email;
-        this.userName = name;
+        this.userName = userName;
         this.password = password;
-        this.role = role;
+        this.role = role != null ? role : UserRole.USER;
+        this.providerId = providerId;
+        this.provider = provider;
     }
 
     /**
      * Refreshes the refresh token.
      * 리프레시 토큰을 업데이트합니다.
-     *
-     * @param refreshToken new refresh token 새로운 리프레시 토큰
      */
     public void updateRefreshToken(String refreshToken) {
         this.refreshToken = refreshToken;
     }
 
+    /**
+     * OAuth2 사용자인지 확인합니다.
+     */
+    public boolean isOAuth2User() {
+        return providerId != null && provider != null;
+    }
+
+    /**
+     * 일반 회원가입 사용자인지 확인합니다.
+     */
+    public boolean isLocalUser() {
+        return password != null && !isOAuth2User();
+    }
+    public void updateProvider(ProviderType provider, String providerId) {
+        this.provider = provider;
+        this.providerId = providerId;
+    }
 }

@@ -1,51 +1,189 @@
-// src/components/Sidebar.jsx
+import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+
 function Sidebar({
   conversations,
   activeConversationId,
+  editingId,
   onNewConversation,
-  onSelectConversation, // '선택' 이벤트를 알릴 함수 추가
-  onDeleteConversation, // '삭제' 이벤트를 알릴 함수 추가
+  onSelectConversation,
+  onDeleteConversation,
+  onUpdateConversation,
+  onStartEdit,
+  onCancelEdit,
+  onCloseSidebar
 }) {
-  // Sidebar는 더 이상 상태를 직접 변경하지 않습니다.
-  // 모든 핸들러는 부모(ChatPage)에게 받은 함수를 호출하는 역할만 합니다.
+  const [editedTitle, setEditedTitle] = useState("");
+  const { isLoggedIn, logout } = useAuth();
+  const navigate = useNavigate();
+
+  // 🌈 테마 관련 상태
+  const themes = ["light", "dark"];
+  const [theme, setTheme] = useState(localStorage.getItem("theme") || themes[0]);
+
+  // 테마 변경 함수
+  const toggleTheme = () => {
+    const nextTheme = theme === "light" ? "dark" : "light";
+    setTheme(nextTheme);
+    localStorage.setItem("theme", nextTheme);
+    document.documentElement.setAttribute("data-theme", nextTheme); // DaisyUI 적용
+  };
+
+  useEffect(() => {
+    if (editingId) {
+      const conversationToEdit = conversations.find(c => c.id === editingId);
+      if (conversationToEdit) {
+        setEditedTitle(conversationToEdit.title || "");
+      }
+    }
+  }, [editingId, conversations]);
+
+  useEffect(() => {
+    // 초기 로드 시 테마 적용
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
+
+  const handleUpdate = () => {
+    if (!editedTitle.trim()) {
+      alert("제목을 비워둘 수 없습니다.");
+      return;
+    }
+    onUpdateConversation(editingId, { title: editedTitle });
+  };
+
+  const handleClose = () => {
+    const drawer = document.getElementById("my-drawer");
+    if (drawer) drawer.checked = false;
+    if (onCloseSidebar) onCloseSidebar();
+  };
 
   return (
-    <div className="drawer-side border-r w-64">
-      <label htmlFor="my-drawer" className="drawer-overlay"></label>
-      <div className="menu p-4 overflow-y-auto w-64 bg-base-100">
-        <h2 className="text-lg font-bold mb-2">대화 목록</h2>
+    <div className="drawer-side border-r w-64 bg-base-100 flex flex-col justify-between">
+      <div className="menu p-4 overflow-y-auto w-64">
+        {/* 대화 목록 헤더 */}
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-lg font-bold">대화 목록</h2>
+          <button
+            className="btn btn-xs btn-ghost text-black hover:bg-gray-200"
+            onClick={handleClose}
+          >
+            ✖
+          </button>
+        </div>
 
+        {/* 새 대화 버튼 */}
         <button
-          className="btn btn-sm btn-primary w-full mb-2"
-          onClick={onNewConversation} // 부모에게 받은 함수 호출
+          className="btn btn-sm border-none w-full mb-2 flex items-center justify-start"
+          onClick={onNewConversation}
         >
-          + 새 대화
+          <span className="text-base mr-2">💬</span> 새 대화
         </button>
 
-        {/* conversations가 배열이 아닐 경우를 대비한 방어 코드 추가 */}
+        {/* 대화 목록 */}
         {Array.isArray(conversations) &&
           conversations.map((c) => (
             <div
               key={c.id}
-              className={`flex items-center justify-between mb-2 p-2 rounded-lg hover:bg-base-200 ${
+              className={`flex items-center justify-between mb-0 p-0 rounded-lg hover:bg-base-200 ${
                 activeConversationId === c.id ? "bg-base-200 font-bold" : ""
               }`}
             >
-              <button
-                className="flex-1 text-left btn btn-ghost p-0 hover:bg-transparent"
-                onClick={() => onSelectConversation(c.id)} // 부모에게 알림
-              >
-                {c.title || "새로운 고민 상담"} {/* title이 null일 경우 대비 */}
-              </button>
-
-              <button
-                className="btn btn-xs btn-error ml-2"
-                onClick={() => onDeleteConversation(c.id)} // 부모에게 알림
-              >
-                🗑
-              </button>
+              {editingId === c.id ? (
+                <div className="flex-1 flex items-center">
+                  <input
+                    type="text"
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    className="input input-bordered input-xs w-full"
+                    onKeyDown={(e) => e.key === "Enter" && handleUpdate(c.id)}
+                    autoFocus
+                  />
+                  <button
+                    className="btn btn-xs btn-ghost"
+                    onClick={() => handleUpdate(c.id)}
+                  >
+                    ✓
+                  </button>
+                  <button
+                    className="btn btn-xs btn-ghost"
+                    onClick={onCancelEdit}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    className="flex-1 text-left btn btn-ghost p-0 hover:bg-transparent"
+                    onClick={() => onSelectConversation(c.id)}
+                  >
+                    <span className="truncate">
+                      {c.title || "새로운 고민 상담"}
+                    </span>
+                  </button>
+                  <button
+                    className="btn btn-xs btn-ghost ml-2"
+                    onClick={() => onStartEdit(c.id)}
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    className="btn btn-xs btn-ghost ml-1"
+                    onClick={() => onDeleteConversation(c.id)}
+                  >
+                    🗑
+                  </button>
+                </>
+              )}
             </div>
           ))}
+      </div>
+
+      {/* 하단: 게시판 + 마이페이지 + 테마 */}
+      <div className="p-4 w-64 flex flex-col gap-2">
+        <button
+          className="btn btn-ghost w-full text-left justify-start"
+          onClick={() => {
+            if (isLoggedIn) navigate("/board");
+            else {
+              alert("로그인 후 이용 가능합니다.");
+              navigate("/login");
+            }
+            handleClose();
+          }}
+        >
+          게시판
+        </button>
+
+        <div className="dropdown dropdown-end dropdown-top w-full relative">
+          <label
+            tabIndex={0}
+            className="btn btn-ghost w-full flex justify-between items-center"
+          >
+            <span>마이 페이지</span>
+            <span className="text-lg">⋯</span>
+          </label>
+          <ul
+            tabIndex={0}
+            className="dropdown-content menu p-2 shadow bg-base-100 rounded-box absolute right-0 mb-2 min-w-max text-right"
+          >
+            <li>
+              <Link to="/profile" onClick={handleClose}>프로필</Link>
+            </li>
+            <li>
+              <Link to="/change-password" onClick={handleClose}>비밀번호 변경</Link>
+            </li>
+            <li>
+              <Link to="/settings" onClick={handleClose}>설정</Link>
+            </li>
+            <li>
+              <button onClick={toggleTheme} className="w-full text-left">
+                {theme === "light" ? "🌞 Light" : "🌙 Dark"}
+              </button>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   );
