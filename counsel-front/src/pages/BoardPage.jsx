@@ -1,4 +1,3 @@
-// src/pages/BoardPage.jsx
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -37,13 +36,23 @@ export default function BoardPage() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
+      {/* 상단 헤더: 기존 새 글 작성 버튼 + 메인 화면 버튼 추가 */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">게시판</h1>
-        <Link to="/board/new" className="btn btn-primary">
-          새 글 작성
-        </Link>
+        <div className="flex gap-2">
+          <Link to="/board/new" className="btn btn-ghost">
+            새 글 작성
+          </Link>
+          <button
+            className="btn btn-ghost"
+            onClick={() => navigate("/")}
+          >
+            메인 화면
+          </button>
+        </div>
       </div>
 
+      {/* 게시글 목록 */}
       <div className="space-y-4">
         {posts.length > 0 ? (
           posts.map((post) => (
