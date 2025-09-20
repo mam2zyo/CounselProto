@@ -25,14 +25,14 @@ public class ConversationService {
     private final UserRepository userRepository;
 
     // 빈 대화 생성
-    @Transactional
-    public ConversationDetailResponse createEmptyConversation(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + email));
-        Conversation conversation = new Conversation(user); // title은 기본값(새로운 고민 상담)으로 시작
-        conversation = conversationRepository.save(conversation);
-        return convertToDetailDto(conversation);
-    }
+//    @Transactional
+//    public ConversationDetailResponse createEmptyConversation(String email) {
+//        User user = userRepository.findByEmail(email)
+//                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + email));
+//        Conversation conversation = new Conversation(user); // title은 기본값(새로운 고민 상담)으로 시작
+//        conversation = conversationRepository.save(conversation);
+//        return convertToDetailDto(conversation);
+//    }
 
     @Transactional(readOnly = true)
     public List<ConversationListResponse> getConversationsByUser(String email) {

@@ -17,9 +17,9 @@ export const fetchConversationDetail = (id) => {
 }
 
 // 빈 대화 생성 (POST /api/conversations)
-export const createConversation = () => {
-    return apiClient.post();
-}
+// export const createConversation = () => {
+//     return apiClient.post();
+// }
 
 // 대화 수정 (PUT /api/conversations/{id})
 export const updateConversation = (id, data) => {

@@ -35,13 +35,13 @@ public class ConversationController {
     }
 
     // 새 대화 생성 (빈 대화)
-    @PostMapping
-    public ResponseEntity<ConversationDetailResponse> createConversation(
-            @AuthenticationPrincipal UserDetails userDetails) {
-        String email = userDetails.getUsername();
-        ConversationDetailResponse newConversation = conversationService.createEmptyConversation(email);
-        return ResponseEntity.status(HttpStatus.CREATED).body(newConversation);
-    }
+//    @PostMapping
+//    public ResponseEntity<ConversationDetailResponse> createConversation(
+//            @AuthenticationPrincipal UserDetails userDetails) {
+//        String email = userDetails.getUsername();
+//        ConversationDetailResponse newConversation = conversationService.createEmptyConversation(email);
+//        return ResponseEntity.status(HttpStatus.CREATED).body(newConversation);
+//    }
 
     // 모든 대화 목록 조회
     @GetMapping
