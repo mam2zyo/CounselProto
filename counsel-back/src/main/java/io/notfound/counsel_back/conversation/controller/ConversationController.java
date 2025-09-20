@@ -31,7 +31,7 @@ public class ConversationController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         String email = userDetails.getUsername();
-        return chatService.generate(request, email);
+        return chatService.completeChat(request, email);
     }
 
     // 새 대화 생성 (빈 대화)

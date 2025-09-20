@@ -40,7 +40,7 @@ public class ChatService {
     private final ConversationService conversationService;
 
     @Transactional
-    public Flux<String> generate(ChatRequest request, String email) {
+    public Flux<String> completeChat(ChatRequest request, String email) {
 
         String messageText = request.getMessage();
         boolean isNewConversation = request.getConversationId() == null;
@@ -101,9 +101,10 @@ public class ChatService {
 
                         chatMemory.add(conversationIdStr, new AssistantMessage(fullAiResponse));
 
-                        // ✨ [수정] 새 대화인 경우에만 제목 생성
+                        // 새 대화인 경우에만 제목 생성
                         if (isNewConversation) {
-                            generateAndSetConversationTitle(conversation.getId(), chatMemory);
+                            String firstChat = "user: " + messageText + "ai: " + fullAiResponse;
+                            generateAndSetConversationTitle(conversation.getId(), firstChat);
                         }
                     }
                     return Mono.empty();
@@ -112,85 +113,18 @@ public class ChatService {
                 .subscribe();
 
         return sharedStream;
-
-//        Conversation conversation =
-//                conversationRepository.findById(conversationIdLong)
-//                        .orElseThrow(() -> new ResponseStatusException(
-//                                HttpStatus.NOT_FOUND, "대화를 찾을 수 없습니다." + conversationIdLong)
-//                        );
-//
-//        boolean isFirstUserMessage = conversation.getChatMessages().isEmpty();
-//
-//        // request로 받은 message를 통해 ChatMessage 객체 생성 후, conversation 객체에 추가
-//        // 이후 개별 레파지토리에 저장하여 영속화
-//        ChatMessage userMessage = new ChatMessage(Sender.USER, messageText, conversation);
-//        conversation.addChatMessage(userMessage);
-//        chatMessageRepository.save(userMessage);
-//        conversationRepository.save(conversation);
-//
-//        // ChatMemory에 userMessage를 저장
-//        String conversationId = conversationIdLong.toString();
-//
-//        ChatMemory chatMemory = MessageWindowChatMemory.builder()
-//                .maxMessages(20)
-//                .chatMemoryRepository(chatMemoryRepository)
-//                .build();
-//        chatMemory.add(conversationId, new UserMessage(messageText));
-//
-//        // 프롬프트 호출을 위한 옵션 설정
-//        OpenAiChatOptions options = OpenAiChatOptions.builder()
-//                .model("gpt-4.1-nano")
-//                .build();
-//
-//        // 프롬프트
-//        Prompt prompt = new Prompt(chatMemory.get(conversationId), options);
-//
-//        // ai 모델에 .stream() 호출 후 컨터롤러 측과 DB 양쪽이 응답을 수신할 수 있도록 .share() 호출
-//        Flux<String> sharedStream = openAiChatModel.stream(prompt)
-//                .flatMap(response -> {
-//                    String token = response.getResult().getOutput().getText();
-//                    // token이 null이 아니면 Mono.just로 감싸서 반환, null이면 Mono.empty()를 반환하여 필터링
-//                    return token != null ? Mono.just(token) : Mono.empty();
-//                })
-//                .share();
-//
-//        // DB 쓰기 쪽 - 스트림을 모두 수신 후 ChatMessage, Conversation, ChatMemory에 각각 저장
-//        sharedStream
-//                .collect(Collectors.joining(""))
-//                .flatMap(fullAiResponse -> {
-//                    if (!fullAiResponse.isEmpty()) {
-//                        ChatMessage aiMessage = new ChatMessage(Sender.AI, fullAiResponse, conversation);
-//                        conversation.addChatMessage(aiMessage);
-//                        chatMessageRepository.save(aiMessage);
-//                        conversationRepository.save(conversation);
-//
-//                        chatMemory.add(conversationId, new AssistantMessage(fullAiResponse));
-//                        chatMemoryRepository.saveAll(conversationId, chatMemory.get(conversationId));
-//
-//                        if (isFirstUserMessage) {
-//                            generateAndSetConversationTitle(conversation.getId(), chatMemory);
-//                        }
-//                    }
-//                    return Mono.empty();
-//                })
-//                .doOnError(e -> System.err.println("DB 저장 중 오류 발생: " + e.getMessage()))
-//                .subscribe();
-//
-//        // Controller 로 전달되는 스트림 - 이후 프론트엔드에서 fetch + readableStream으로 처리
-//        return sharedStream;
     }
 
     @Transactional
-    public void generateAndSetConversationTitle(Long conversationId, ChatMemory chatMemory) {
-        String titleGenerationPrompt =
+    public void generateAndSetConversationTitle(Long conversationId, String firstChat) {
+        String titleGenerationPrompt = firstChat +
                 "이 대화에 적합한 대화 제목을 6단어 이내로 만들어 줘";
 
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .model("gpt-4.1-nano")
                 .build();
 
-        chatMemory.add(conversationId.toString(), new SystemMessage(titleGenerationPrompt));
-        Prompt titlePrompt = new Prompt(chatMemory.get(conversationId.toString()), options);
+        Prompt titlePrompt = new Prompt(titleGenerationPrompt, options);
 
         String generatedTitle = Objects.requireNonNull(openAiChatModel.call(titlePrompt).getResult().getOutput().getText()).trim();
 
