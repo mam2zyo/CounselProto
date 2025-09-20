@@ -12,7 +12,7 @@ import {
   updateConversation,
   deleteConversation,
   fetchConversations,
-  fetchConversationDetail
+  fetchConversationDetail,
 } from "../api/conversation";
 
 function ChatPage() {
@@ -30,7 +30,7 @@ function ChatPage() {
 
   // 현재 활성화된 대화 찾기
   const activeConversation = conversations.find(
-    c => c.id === activeConversationId
+    (c) => c.id === activeConversationId
   );
 
   // 컴포넌트 마운트 시 대화목록 불러오기
@@ -78,13 +78,13 @@ function ChatPage() {
       console.error("새 대화 생성 실패:", error);
     }
   };
-  
+
   // 대화 삭제 핸들러
   const handleDeleteConversation = async (id) => {
     if (!confirm("이 대화를 삭제하시겠습니까?")) return;
     try {
       await deleteConversation(id);
-      setConversations((prev) => prev.filter(c => c.id !== id));
+      setConversations((prev) => prev.filter((c) => c.id !== id));
       if (activeConversationId === id) {
         setActiveConversationId(null);
       }
@@ -111,9 +111,11 @@ function ChatPage() {
     try {
       const response = await updateConversation(id, data);
       const updatedConversation = response.data;
-      
-      setConversations(prev =>
-        prev.map(c => (c.id === id ? {...c, title: updatedConversation.title } : c))
+
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === id ? { ...c, title: updatedConversation.title } : c
+        )
       );
       setEditingConversationId(null);
     } catch (error) {
@@ -121,23 +123,22 @@ function ChatPage() {
       alert("대화 수정에 실패했습니다.");
     }
   };
-  
+
   // 사이드바에서 특정 대화 선택시
   const handleSelectConversation = async (id) => {
-
     if (editingConversationId === id) return; // 수정 중 다른 대화 선택 막기
     setActiveConversationId(id);
 
     try {
       const response = await fetchConversationDetail(id);
       const detail = response.data;
-      setConversations(prev =>
-        prev.map(c => c.id === id ? { ...c, messages: detail.messages } : c)
+      setConversations((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, messages: detail.messages } : c))
       );
     } catch (error) {
       console.error("대화 상세 정보 로딩 실패:", error);
     }
-  };  
+  };
 
   // 스트리밍을 통한 메시지 전송
   const handleSendMessage = async () => {
@@ -145,11 +146,15 @@ function ChatPage() {
 
     let currentConvId = activeConversationId;
     const userMessageText = input.trim();
+
+    let isNewConversation = false;
+
     setInput("");
     setIsSending(true);
 
     // 활성 대화가 없으면 생성
     if (!currentConvId) {
+      isNewConversation = true;
       try {
         const response = await createConversation();
         const newConversation = response.data;
@@ -167,11 +172,11 @@ function ChatPage() {
     const userMessage = {
       id: Date.now(),
       message: userMessageText,
-      sender: "user"
+      sender: "user",
     };
 
-    setConversations(prev =>
-      prev.map(c =>
+    setConversations((prev) =>
+      prev.map((c) =>
         c.id === currentConvId
           ? { ...c, messages: [...(c.messages || []), userMessage] }
           : c
@@ -180,10 +185,16 @@ function ChatPage() {
 
     // AI 응답 메시지 placeholder 추가
     const aiMessageId = Date.now() + 1;
-    const aiMessagePlaceholder = { id: aiMessageId, message: "...", sender: "ai" };
-    setConversations(prev =>
-      prev.map(c =>
-        c.id === currentConvId ? { ...c, messages: [...c.messages, aiMessagePlaceholder] } : c
+    const aiMessagePlaceholder = {
+      id: aiMessageId,
+      message: "...",
+      sender: "ai",
+    };
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === currentConvId
+          ? { ...c, messages: [...c.messages, aiMessagePlaceholder] }
+          : c
       )
     );
 
@@ -191,15 +202,22 @@ function ChatPage() {
     streamChat(
       currentConvId,
       userMessageText,
-      (token) => { // onMessage: 스트리밍 데이터 수신 시
-        setConversations(prev =>
-          prev.map(c => {
+      (token) => {
+        // onMessage: 스트리밍 데이터 수신 시
+        setConversations((prev) =>
+          prev.map((c) => {
             if (c.id === currentConvId) {
               const lastMessage = c.messages[c.messages.length - 1];
               // placeholder를 실제 AI 응답으로 교체하며 텍스트 누적
               if (lastMessage.id === aiMessageId) {
-                const newText = lastMessage.message === "..." ? token : lastMessage.message + token;
-                const updatedMessages = [...c.messages.slice(0, -1), { ...lastMessage, message: newText }];
+                const newText =
+                  lastMessage.message === "..."
+                    ? token
+                    : lastMessage.message + token;
+                const updatedMessages = [
+                  ...c.messages.slice(0, -1),
+                  { ...lastMessage, message: newText },
+                ];
                 return { ...c, messages: updatedMessages };
               }
             }
@@ -207,13 +225,17 @@ function ChatPage() {
           })
         );
       },
-      (error) => { // onError: 에러 발생 시
+      (error) => {
+        // onError: 에러 발생 시
         console.error("스트리밍 에러:", error);
         // 에러 메시지를 UI에 표시
-        setConversations(prev =>
-          prev.map(c => {
+        setConversations((prev) =>
+          prev.map((c) => {
             if (c.id === currentConvId) {
-              const updatedMessages = [...c.messages.slice(0, -1), { ...aiMessagePlaceholder, message: "오류가 발생했습니다." }];
+              const updatedMessages = [
+                ...c.messages.slice(0, -1),
+                { ...aiMessagePlaceholder, message: "오류가 발생했습니다." },
+              ];
               return { ...c, messages: updatedMessages };
             }
             return c;
@@ -221,12 +243,16 @@ function ChatPage() {
         );
         setIsSending(false);
       },
-      () => { // onComplete: 스트림 완료 시
+      () => {
+        // onComplete: 스트림 완료 시
         setIsSending(false);
+        if (isNewConversation) {
+          loadConversations();
+        }
       }
     );
   };
- 
+
   return (
     <div className="drawer lg:drawer-open">
       <input id="my-drawer" type="checkbox" className="drawer-toggle" />
@@ -235,19 +261,20 @@ function ChatPage() {
 
         <main ref={mainContentRef} className="flex-1 overflow-y-auto p-4">
           {/* 활성화된 대화가 없거나, 메시지 배열이 비어있는 경우 안내 문구 표시 */}
-          {(!activeConversation || !activeConversation.messages || activeConversation.messages.length === 0)
-            ? (
-              <div className="flex items-center justify-center h-screen">
-                <p className="text-gray-400 text-center -mt-50">
-                  새로운 대화를 시작해보세요 ✨
-                </p>
-              </div>
-            ) : (
-              // 메시지가 하나라도 있는 경우, 메시지 목록을 렌더링
-              activeConversation.messages.map((message) => (
-                <ChatMessage key={message.id} message={message} />
-              ))
-            )}
+          {!activeConversation ||
+          !activeConversation.messages ||
+          activeConversation.messages.length === 0 ? (
+            <div className="flex items-center justify-center h-screen">
+              <p className="text-gray-400 text-center -mt-50">
+                새로운 대화를 시작해보세요 ✨
+              </p>
+            </div>
+          ) : (
+            // 메시지가 하나라도 있는 경우, 메시지 목록을 렌더링
+            activeConversation.messages.map((message) => (
+              <ChatMessage key={message.id} message={message} />
+            ))
+          )}
         </main>
         <ChatInput
           input={input}
@@ -266,7 +293,7 @@ function ChatPage() {
         onUpdateConversation={handleUpdateConversation}
         editingId={editingConversationId}
         onStartEdit={handleStartEdit}
-        onCancelEdit={handleCancelEdit}        
+        onCancelEdit={handleCancelEdit}
       />
     </div>
   );

@@ -6,14 +6,12 @@ import io.notfound.counsel_back.conversation.entity.Conversation;
 import io.notfound.counsel_back.conversation.entity.Sender;
 import io.notfound.counsel_back.conversation.repository.ChatMessageRepository;
 import io.notfound.counsel_back.conversation.repository.ConversationRepository;
-import io.notfound.counsel_back.user.entity.User;
-import io.notfound.counsel_back.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.MessageType;
+import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -49,6 +47,8 @@ public class ChatService {
                         .orElseThrow(() -> new ResponseStatusException(
                                 HttpStatus.NOT_FOUND, "대화를 찾을 수 없습니다." + conversationIdLong)
                         );
+
+        boolean isFirstUserMessage = conversation.getChatMessages().isEmpty();
 
         // request로 받은 message를 통해 ChatMessage 객체 생성 후, conversation 객체에 추가
         // 이후 개별 레파지토리에 저장하여 영속화
@@ -95,6 +95,10 @@ public class ChatService {
 
                         chatMemory.add(conversationId, new AssistantMessage(fullAiResponse));
                         chatMemoryRepository.saveAll(conversationId, chatMemory.get(conversationId));
+
+                        if (isFirstUserMessage) {
+                            generateAndSetConversationTitle(conversation.getId(), chatMemory);
+                        }
                     }
                     return Mono.empty();
                 })
@@ -106,15 +110,17 @@ public class ChatService {
     }
 
     @Transactional
-    public void generateAndSetConversationTitle(Long conversationId, String firstAiResponse) {
+    public void generateAndSetConversationTitle(Long conversationId, ChatMemory chatMemory) {
         String titleGenerationPrompt =
-                "다음 대화 내용에 적합한 대화 제목을 6단어 이내로 만들어 줘" + firstAiResponse;
+                "이 대화에 적합한 대화 제목을 6단어 이내로 만들어 줘";
 
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .model("gpt-4.1-nano")
                 .build();
 
-        Prompt titlePrompt = new Prompt(titleGenerationPrompt, options);
+        chatMemory.add(conversationId.toString(), new SystemMessage(titleGenerationPrompt));
+        Prompt titlePrompt = new Prompt(chatMemory.get(conversationId.toString()), options);
+
         String generatedTitle = Objects.requireNonNull(openAiChatModel.call(titlePrompt).getResult().getOutput().getText()).trim();
 
         conversationService.updateConversationTitle(conversationId, generatedTitle);
