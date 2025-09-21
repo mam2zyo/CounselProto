@@ -18,6 +18,7 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +39,8 @@ public class ChatService {
     private final ConversationRepository conversationRepository;
     private final UserRepository userRepository;
     private final ConversationService conversationService;
+
+    private static final int MAX_CHAT_MEMORY_MESSAGES = 20;
 
     @Transactional
     public Flux<String> completeChat(ChatRequest request, String email) {
@@ -74,13 +77,15 @@ public class ChatService {
         // ChatMemory 로직
         String conversationIdStr = conversation.getId().toString();
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
-                .maxMessages(20)
+                .maxMessages(MAX_CHAT_MEMORY_MESSAGES)
                 .chatMemoryRepository(chatMemoryRepository)
                 .build();
         chatMemory.add(conversationIdStr, new UserMessage(messageText));
 
         // 프롬프트 및 스트리밍 로직 (기존과 거의 동일)
-        OpenAiChatOptions options = OpenAiChatOptions.builder().model("gpt-4.1-nano").build();
+        OpenAiChatOptions options = OpenAiChatOptions.builder()
+                .model(OpenAiApi.ChatModel.GPT_4_1_NANO)
+                .build();
         Prompt prompt = new Prompt(chatMemory.get(conversationIdStr), options);
 
         Flux<String> sharedStream = openAiChatModel.stream(prompt)
@@ -116,12 +121,12 @@ public class ChatService {
     }
 
     @Transactional
-    public void generateAndSetConversationTitle(Long conversationId, String firstChat) {
+    private void generateAndSetConversationTitle(Long conversationId, String firstChat) {
         String titleGenerationPrompt = firstChat +
                 "이 대화에 적합한 대화 제목을 6단어 이내로 만들어 줘";
 
         OpenAiChatOptions options = OpenAiChatOptions.builder()
-                .model("gpt-4.1-nano")
+                .model(OpenAiApi.ChatModel.GPT_4_1_NANO)
                 .build();
 
         Prompt titlePrompt = new Prompt(titleGenerationPrompt, options);
