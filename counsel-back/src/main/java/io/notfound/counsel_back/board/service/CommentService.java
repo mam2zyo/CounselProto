@@ -6,8 +6,6 @@ import io.notfound.counsel_back.board.entity.Comment;
 import io.notfound.counsel_back.board.entity.Post;
 import io.notfound.counsel_back.board.repository.CommentRepository;
 import io.notfound.counsel_back.board.repository.PostRepository;
-import io.notfound.counsel_back.user.entity.User;
-import io.notfound.counsel_back.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,36 +21,28 @@ import java.util.stream.Collectors;
 public class CommentService {
 
     private final CommentRepository commentRepository;
-    private final PostRepository postRepository; // 게시글 존재 여부 확인용
-    private final UserRepository userRepository;
+    private final PostRepository postRepository;
+    private final FilteringService filteringService;
 
     @Transactional
-    // [수정] email 파라미터 추가
-    public CommentResponse createComment(Long postId, CommentRequest request, String email) {
+    public CommentResponse createComment(Long postId, CommentRequest request) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new NoSuchElementException("Post not found with id: " + postId));
 
-        // [수정] 인증된 사용자 정보로 작성자 설정
-        User writer = userRepository.findByEmail(email)
-                .orElseThrow(() -> new NoSuchElementException("User not found with email: " + email));
+        String filteredContent = filteringService.filterText(request.getContent());
 
         Comment comment = Comment.builder()
-                .content(request.getContent())
-                .writer(writer)
-                .post(post)
+                .content(filteredContent)
                 .build();
 
         post.addComment(comment);
-
         Comment savedComment = commentRepository.save(comment);
 
-        return CommentResponse.from(savedComment); // 정적 팩토리 메서드 사용
+        return CommentResponse.from(savedComment);
     }
 
-    // 특정 게시글의 모든 댓글 조회
     @Transactional(readOnly = true)
     public List<CommentResponse> getCommentsByPostId(Long postId) {
-        // 특정 게시글이 존재하는지 먼저 확인
         if (!postRepository.existsById(postId)) {
             throw new NoSuchElementException("Post not found with id: " + postId);
         }
@@ -63,27 +53,22 @@ public class CommentService {
                 .toList();
     }
 
-    // 댓글 수정
     @Transactional
-    public CommentResponse updateComment(Long commentId, CommentRequest request, String email) {
+    public CommentResponse updateComment(Long commentId, CommentRequest request) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new NoSuchElementException("Comment not found with id: " + commentId));
 
-        if (!comment.getWriter().getEmail().equals(email)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글을 수정할 권한이 없습니다.");
-        }
-        comment.update(request.getContent());
+        String filteredContent = filteringService.filterText(request.getContent());
+
+        comment.update(filteredContent);
 
         return CommentResponse.from(comment);
     }
 
     @Transactional
-    public void deleteComment(Long commentId, String email) {
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new NoSuchElementException("Comment not found with id: " + commentId));
-
-        if (!comment.getWriter().getEmail().equals(email)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글을 삭제할 권한이 없습니다.");
+    public void deleteComment(Long commentId) {
+        if (!commentRepository.existsById(commentId)) {
+            throw new NoSuchElementException("Comment not found with id: " + commentId);
         }
         commentRepository.deleteById(commentId);
     }
