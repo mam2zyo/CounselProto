@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -23,8 +25,6 @@ public class Comment {
     @Column(nullable = false) // [추가] 작성자 이름
     private String writerName;
 
-    @Column(nullable = false) // [추가] 비밀번호 (해시값 저장)
-    private String password;
 
     private LocalDateTime createdAt;
 
@@ -32,10 +32,19 @@ public class Comment {
     @JoinColumn(name = "post_id")
     private Post post;
 
+    // 🔹 신고 목록
+    @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Report> reports = new ArrayList<>();
+
     void setPost(Post post) {
         this.post = post;
     }
 
+    // 🔹 신고 추가 메서드
+    public void addReport(Report report) {
+        reports.add(report);
+        report.setComment(this); // Comment와 Report 연결
+    }
     @PrePersist
     public void createdAt() {
         this.createdAt = LocalDateTime.now();

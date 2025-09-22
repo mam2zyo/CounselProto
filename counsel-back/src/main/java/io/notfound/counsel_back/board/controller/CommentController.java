@@ -45,8 +45,7 @@ public class CommentController {
     public ResponseEntity<Void> deleteComment(
             @PathVariable Long commentId,
             @RequestBody CommentRequest request) {
-
-        commentService.deleteComment(commentId, request.getPassword());
+        
         return ResponseEntity.noContent().build();
     }
 }

@@ -34,18 +34,27 @@ public class Post {
 
     private LocalDateTime createdAt;
 
+    // ✅ 댓글
     @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>();
 
+    // ✅ 첨부파일
     @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Attachment> attachments = new ArrayList<>();
+
+    // ✅ 신고 (Report)
+    @Builder.Default
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Report> reports = new ArrayList<>();
 
     @PrePersist
     public void createdAt() {
         this.createdAt = LocalDateTime.now();
     }
+
+    // ==================== 도메인 메서드 ====================
 
     // ✅ 제목, 내용 수정
     public void update(String title, String content) {
@@ -81,5 +90,11 @@ public class Post {
     public void addComment(Comment comment) {
         this.comments.add(comment);
         comment.setPost(this);
+    }
+
+    // ✅ 신고 추가
+    public void addReport(Report report) {
+        this.reports.add(report);
+        report.setPost(this);
     }
 }
