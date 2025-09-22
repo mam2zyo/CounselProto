@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 function Sidebar({
-  userId,
+  userId, // 로그인 유저 ID 추가
   conversations,
   activeConversationId,
   editingId,
@@ -16,17 +16,21 @@ function Sidebar({
   onCloseSidebar,
 }) {
   const [editedTitle, setEditedTitle] = useState("");
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, logout } = useAuth();
   const navigate = useNavigate();
 
+  // 🌈 테마 관련 상태
   const themes = ["light", "dark"];
-  const [theme, setTheme] = useState(localStorage.getItem("theme") || themes[0]);
+  const [theme, setTheme] = useState(
+    localStorage.getItem("theme") || themes[0]
+  );
 
+  // 테마 변경 함수
   const toggleTheme = () => {
     const nextTheme = theme === "light" ? "dark" : "light";
     setTheme(nextTheme);
     localStorage.setItem("theme", nextTheme);
-    document.documentElement.setAttribute("data-theme", nextTheme);
+    document.documentElement.setAttribute("data-theme", nextTheme); // DaisyUI 적용
   };
 
   useEffect(() => {
@@ -39,6 +43,7 @@ function Sidebar({
   }, [editingId, conversations]);
 
   useEffect(() => {
+    // 초기 로드 시 테마 적용
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
@@ -57,14 +62,13 @@ function Sidebar({
   };
 
   return (
-    <div className="drawer-side border-r w-64 bg-base-100 flex flex-col h-full">
-      <div className="menu p-4 overflow-y-auto w-64 flex-1">
+    <div className="drawer-side border-r w-64 bg-base-100 flex flex-col justify-between">
+      <div className="menu p-4 overflow-y-auto w-64">
         {/* 대화 목록 헤더 */}
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-bold">대화 목록</h2>
-          {/* 화면이 lg 이상이면 X 버튼 숨김 */}
           <button
-            className="btn btn-xs btn-ghost text-black hover:bg-gray-200 lg:hidden"
+            className="btn btn-xs btn-ghost text-black hover:bg-gray-200"
             onClick={handleClose}
           >
             ✖
@@ -113,6 +117,7 @@ function Sidebar({
                 </div>
               ) : (
                 <>
+                  {/* 구조 변경: 클릭 가능한 영역과 아이콘 영역 분리 */}
                   <div
                     className="flex-1 cursor-pointer truncate p-2"
                     title={c.title}
@@ -139,7 +144,7 @@ function Sidebar({
       </div>
 
       {/* 하단: 게시판 + 마이페이지 + 테마 */}
-      <div className="p-4 w-64 flex flex-col gap-2 mt-2 lg:mt-auto">
+      <div className="p-4 w-64 flex flex-col gap-2">
         <button
           className="btn btn-ghost w-full text-left justify-start"
           onClick={() => {
@@ -167,6 +172,7 @@ function Sidebar({
             className="dropdown-content menu p-2 shadow bg-base-100 rounded-box absolute right-0 mb-2 min-w-max text-right"
           >
             <li>
+              {/* 🔹 UserProfilePage 연결 */}
               <Link to={`/user/${userId}/profile`} onClick={handleClose}>
                 프로필
               </Link>
