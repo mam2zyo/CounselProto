@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 function Sidebar({
-  userId, // 로그인 유저 ID 추가
+  userId,
   conversations,
   activeConversationId,
   editingId,
@@ -13,27 +13,25 @@ function Sidebar({
   onUpdateConversation,
   onStartEdit,
   onCancelEdit,
-  onCloseSidebar
+  onCloseSidebar,
 }) {
   const [editedTitle, setEditedTitle] = useState("");
-  const { isLoggedIn, logout } = useAuth();
+  const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
 
-  // 🌈 테마 관련 상태
   const themes = ["light", "dark"];
   const [theme, setTheme] = useState(localStorage.getItem("theme") || themes[0]);
 
-  // 테마 변경 함수
   const toggleTheme = () => {
     const nextTheme = theme === "light" ? "dark" : "light";
     setTheme(nextTheme);
     localStorage.setItem("theme", nextTheme);
-    document.documentElement.setAttribute("data-theme", nextTheme); // DaisyUI 적용
+    document.documentElement.setAttribute("data-theme", nextTheme);
   };
 
   useEffect(() => {
     if (editingId) {
-      const conversationToEdit = conversations.find(c => c.id === editingId);
+      const conversationToEdit = conversations.find((c) => c.id === editingId);
       if (conversationToEdit) {
         setEditedTitle(conversationToEdit.title || "");
       }
@@ -41,7 +39,6 @@ function Sidebar({
   }, [editingId, conversations]);
 
   useEffect(() => {
-    // 초기 로드 시 테마 적용
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
@@ -60,13 +57,14 @@ function Sidebar({
   };
 
   return (
-    <div className="drawer-side border-r w-64 bg-base-100 flex flex-col justify-between">
-      <div className="menu p-4 overflow-y-auto w-64">
+    <div className="drawer-side border-r w-64 bg-base-100 flex flex-col h-full">
+      <div className="menu p-4 overflow-y-auto w-64 flex-1">
         {/* 대화 목록 헤더 */}
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-bold">대화 목록</h2>
+          {/* 화면이 lg 이상이면 X 버튼 숨김 */}
           <button
-            className="btn btn-xs btn-ghost text-black hover:bg-gray-200"
+            className="btn btn-xs btn-ghost text-black hover:bg-gray-200 lg:hidden"
             onClick={handleClose}
           >
             ✖
@@ -86,7 +84,7 @@ function Sidebar({
           conversations.map((c) => (
             <div
               key={c.id}
-              className={`flex items-center justify-between mb-0 p-0 rounded-lg hover:bg-base-200 ${
+              className={`flex w-full items-center justify-between mb-0 rounded-lg hover:bg-base-200 ${
                 activeConversationId === c.id ? "bg-base-200 font-bold" : ""
               }`}
             >
@@ -115,22 +113,21 @@ function Sidebar({
                 </div>
               ) : (
                 <>
-                  <button
-                    className="flex-1 text-left btn btn-ghost p-0 hover:bg-transparent"
+                  <div
+                    className="flex-1 cursor-pointer truncate p-2"
+                    title={c.title}
                     onClick={() => onSelectConversation(c.id)}
                   >
-                    <span className="truncate">
-                      {c.title || "새로운 고민 상담"}
-                    </span>
-                  </button>
+                    {c.title || "새로운 고민 상담"}
+                  </div>
                   <button
-                    className="btn btn-xs btn-ghost ml-2"
+                    className="btn btn-xs btn-ghost"
                     onClick={() => onStartEdit(c.id)}
                   >
                     ✏️
                   </button>
                   <button
-                    className="btn btn-xs btn-ghost ml-1"
+                    className="btn btn-xs btn-ghost"
                     onClick={() => onDeleteConversation(c.id)}
                   >
                     🗑
@@ -142,7 +139,7 @@ function Sidebar({
       </div>
 
       {/* 하단: 게시판 + 마이페이지 + 테마 */}
-      <div className="p-4 w-64 flex flex-col gap-2">
+      <div className="p-4 w-64 flex flex-col gap-2 mt-2 lg:mt-auto">
         <button
           className="btn btn-ghost w-full text-left justify-start"
           onClick={() => {
@@ -170,7 +167,6 @@ function Sidebar({
             className="dropdown-content menu p-2 shadow bg-base-100 rounded-box absolute right-0 mb-2 min-w-max text-right"
           >
             <li>
-              {/* 🔹 UserProfilePage 연결 */}
               <Link to={`/user/${userId}/profile`} onClick={handleClose}>
                 프로필
               </Link>
