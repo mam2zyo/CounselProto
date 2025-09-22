@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 function Sidebar({
+  userId, // 로그인 유저 ID 추가
   conversations,
   activeConversationId,
   editingId,
@@ -96,12 +97,12 @@ function Sidebar({
                     value={editedTitle}
                     onChange={(e) => setEditedTitle(e.target.value)}
                     className="input input-bordered input-xs w-full"
-                    onKeyDown={(e) => e.key === "Enter" && handleUpdate(c.id)}
+                    onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
                     autoFocus
                   />
                   <button
                     className="btn btn-xs btn-ghost"
-                    onClick={() => handleUpdate(c.id)}
+                    onClick={handleUpdate}
                   >
                     ✓
                   </button>
@@ -169,13 +170,20 @@ function Sidebar({
             className="dropdown-content menu p-2 shadow bg-base-100 rounded-box absolute right-0 mb-2 min-w-max text-right"
           >
             <li>
-              <Link to="/profile" onClick={handleClose}>프로필</Link>
+              {/* 🔹 UserProfilePage 연결 */}
+              <Link to={`/user/${userId}/profile`} onClick={handleClose}>
+                프로필
+              </Link>
             </li>
             <li>
-              <Link to="/change-password" onClick={handleClose}>비밀번호 변경</Link>
+              <Link to="/change-password" onClick={handleClose}>
+                비밀번호 변경
+              </Link>
             </li>
             <li>
-              <Link to="/settings" onClick={handleClose}>설정</Link>
+              <Link to="/settings" onClick={handleClose}>
+                설정
+              </Link>
             </li>
             <li>
               <button onClick={toggleTheme} className="w-full text-left">
