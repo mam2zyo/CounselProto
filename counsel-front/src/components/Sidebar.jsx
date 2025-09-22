@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
 function Sidebar({
+  userId,
   conversations,
   activeConversationId,
   editingId,
@@ -15,21 +16,17 @@ function Sidebar({
   onCloseSidebar,
 }) {
   const [editedTitle, setEditedTitle] = useState("");
-  const { isLoggedIn, logout } = useAuth();
+  const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
 
-  // 🌈 테마 관련 상태
   const themes = ["light", "dark"];
-  const [theme, setTheme] = useState(
-    localStorage.getItem("theme") || themes[0]
-  );
+  const [theme, setTheme] = useState(localStorage.getItem("theme") || themes[0]);
 
-  // 테마 변경 함수
   const toggleTheme = () => {
     const nextTheme = theme === "light" ? "dark" : "light";
     setTheme(nextTheme);
     localStorage.setItem("theme", nextTheme);
-    document.documentElement.setAttribute("data-theme", nextTheme); // DaisyUI 적용
+    document.documentElement.setAttribute("data-theme", nextTheme);
   };
 
   useEffect(() => {
@@ -42,7 +39,6 @@ function Sidebar({
   }, [editingId, conversations]);
 
   useEffect(() => {
-    // 초기 로드 시 테마 적용
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
@@ -66,8 +62,9 @@ function Sidebar({
         {/* 대화 목록 헤더 */}
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-bold">대화 목록</h2>
+          {/* 화면이 lg 이상이면 X 버튼 숨김 */}
           <button
-            className="btn btn-xs btn-ghost text-black hover:bg-gray-200"
+            className="btn btn-xs btn-ghost text-black hover:bg-gray-200 lg:hidden"
             onClick={handleClose}
           >
             ✖
@@ -98,12 +95,12 @@ function Sidebar({
                     value={editedTitle}
                     onChange={(e) => setEditedTitle(e.target.value)}
                     className="input input-bordered input-xs w-full"
-                    onKeyDown={(e) => e.key === "Enter" && handleUpdate(c.id)}
+                    onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
                     autoFocus
                   />
                   <button
                     className="btn btn-xs btn-ghost"
-                    onClick={() => handleUpdate(c.id)}
+                    onClick={handleUpdate}
                   >
                     ✓
                   </button>
@@ -116,7 +113,6 @@ function Sidebar({
                 </div>
               ) : (
                 <>
-                  {/* 구조 변경: 클릭 가능한 영역과 아이콘 영역 분리 */}
                   <div
                     className="flex-1 cursor-pointer truncate p-2"
                     title={c.title}
@@ -171,7 +167,7 @@ function Sidebar({
             className="dropdown-content menu p-2 shadow bg-base-100 rounded-box absolute right-0 mb-2 min-w-max text-right"
           >
             <li>
-              <Link to="/profile" onClick={handleClose}>
+              <Link to={`/user/${userId}/profile`} onClick={handleClose}>
                 프로필
               </Link>
             </li>

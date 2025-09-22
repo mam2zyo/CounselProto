@@ -1,10 +1,11 @@
 import { Routes, Route } from "react-router-dom";
-import ChatPage from "./pages/ChatPage";
-import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
-import BoardPage from "./pages/BoardPage";
-import PostDetailPage from "./pages/PostDetailPage";
-
+import ChatPage from "./pages/ChatPage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import SignupPage from "./pages/SignupPage.jsx";
+import BoardPage from "./pages/BoardPage.jsx";
+import PostDetailPage from "./pages/PostDetailPage.jsx";
+import UserProfilePage from "./pages/UserProfilePage.jsx";
+import UserDetailPage from "./pages/UserDetailPage.jsx";
 
 function App() {
   return (
@@ -13,7 +14,10 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/board" element={<BoardPage />} />
-        <Route path="/board/:postId" element={<PostDetailPage />} />
+      <Route path="/board/:postId" element={<PostDetailPage />} />
+      {/* 추가된 User 관련 페이지 */}
+      <Route path="/user/:userId/profile" element={<UserProfilePage />} />
+      <Route path="/user/:userId/detail" element={<UserDetailPage />} />
     </Routes>
   );
 }
