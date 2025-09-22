@@ -12,7 +12,7 @@ function Sidebar({
   onUpdateConversation,
   onStartEdit,
   onCancelEdit,
-  onCloseSidebar
+  onCloseSidebar,
 }) {
   const [editedTitle, setEditedTitle] = useState("");
   const { isLoggedIn, logout } = useAuth();
@@ -20,7 +20,9 @@ function Sidebar({
 
   // 🌈 테마 관련 상태
   const themes = ["light", "dark"];
-  const [theme, setTheme] = useState(localStorage.getItem("theme") || themes[0]);
+  const [theme, setTheme] = useState(
+    localStorage.getItem("theme") || themes[0]
+  );
 
   // 테마 변경 함수
   const toggleTheme = () => {
@@ -32,7 +34,7 @@ function Sidebar({
 
   useEffect(() => {
     if (editingId) {
-      const conversationToEdit = conversations.find(c => c.id === editingId);
+      const conversationToEdit = conversations.find((c) => c.id === editingId);
       if (conversationToEdit) {
         setEditedTitle(conversationToEdit.title || "");
       }
@@ -85,7 +87,7 @@ function Sidebar({
           conversations.map((c) => (
             <div
               key={c.id}
-              className={`flex items-center justify-between mb-0 p-0 rounded-lg hover:bg-base-200 ${
+              className={`flex w-full items-center justify-between mb-0 rounded-lg hover:bg-base-200 ${
                 activeConversationId === c.id ? "bg-base-200 font-bold" : ""
               }`}
             >
@@ -114,22 +116,22 @@ function Sidebar({
                 </div>
               ) : (
                 <>
-                  <button
-                    className="flex-1 text-left btn btn-ghost p-0 hover:bg-transparent"
+                  {/* 구조 변경: 클릭 가능한 영역과 아이콘 영역 분리 */}
+                  <div
+                    className="flex-1 cursor-pointer truncate p-2"
+                    title={c.title}
                     onClick={() => onSelectConversation(c.id)}
                   >
-                    <span className="truncate">
-                      {c.title || "새로운 고민 상담"}
-                    </span>
-                  </button>
+                    {c.title || "새로운 고민 상담"}
+                  </div>
                   <button
-                    className="btn btn-xs btn-ghost ml-2"
+                    className="btn btn-xs btn-ghost"
                     onClick={() => onStartEdit(c.id)}
                   >
                     ✏️
                   </button>
                   <button
-                    className="btn btn-xs btn-ghost ml-1"
+                    className="btn btn-xs btn-ghost"
                     onClick={() => onDeleteConversation(c.id)}
                   >
                     🗑
@@ -169,13 +171,19 @@ function Sidebar({
             className="dropdown-content menu p-2 shadow bg-base-100 rounded-box absolute right-0 mb-2 min-w-max text-right"
           >
             <li>
-              <Link to="/profile" onClick={handleClose}>프로필</Link>
+              <Link to="/profile" onClick={handleClose}>
+                프로필
+              </Link>
             </li>
             <li>
-              <Link to="/change-password" onClick={handleClose}>비밀번호 변경</Link>
+              <Link to="/change-password" onClick={handleClose}>
+                비밀번호 변경
+              </Link>
             </li>
             <li>
-              <Link to="/settings" onClick={handleClose}>설정</Link>
+              <Link to="/settings" onClick={handleClose}>
+                설정
+              </Link>
             </li>
             <li>
               <button onClick={toggleTheme} className="w-full text-left">

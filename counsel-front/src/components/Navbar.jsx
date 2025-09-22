@@ -9,14 +9,22 @@ function Navbar() {
     <div className="navbar bg-base-100 shadow-md relative">
       {/* 좌측 메뉴 버튼 (모바일용) */}
       <div className="navbar-start">
-        <label htmlFor="my-drawer" className="btn btn-square btn-ghost lg:hidden">
+        <label
+          htmlFor="my-drawer"
+          className="btn btn-square btn-ghost lg:hidden"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
             className="inline-block w-5 h-5 stroke-current"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M4 6h16M4 12h16M4 18h16"
+            ></path>
           </svg>
         </label>
       </div>
@@ -25,16 +33,16 @@ function Navbar() {
       <div className="absolute left-1/2 transform -translate-x-1/2">
         <button
           className="
-            text-3xl font-bold px-6 py-2
-            border-none border-current rounded-xl
-            bg-base-100 text-base-content shadow-lg
+            text-xl font-bold px-6 py-2            
+            bg-transparent focus:outline-none focus:ring-0
+            text-base-content
             hover:bg-base-200 transition-colors duration-200
             cursor-pointer
           "
           style={{ lineHeight: 1 }}
           onClick={() => {}}
         >
-          고민 상담
+          고민 상담소
         </button>
       </div>
 
@@ -45,10 +53,7 @@ function Navbar() {
             로그아웃
           </button>
         ) : (
-          <button
-            onClick={() => navigate("/login")}
-            className="btn btn-ghost"
-          >
+          <button onClick={() => navigate("/login")} className="btn btn-ghost">
             로그인
           </button>
         )}
