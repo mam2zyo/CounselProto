@@ -22,7 +22,6 @@ public class CommentResponse {
                 .id(comment.getId())
                 .content(comment.getContent())
                 .authorId(null) // [수정] 익명 댓글이므로 authorId는 null
-                .writerName(comment.getWriterName()) // [수정] 익명 작성자 이름 사용
                 .createdAt(comment.getCreatedAt())
                 .postId(comment.getPost().getId())
                 .build();

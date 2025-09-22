@@ -30,7 +30,7 @@ public class Post {
     private String content;
 
     @Column(nullable = false)
-    private long views = 0; // ✅ 조회수 필드 (DB 컬럼 매핑)
+    private long views; // ✅ 조회수 필드 (DB 컬럼 매핑)
 
     private LocalDateTime createdAt;
 

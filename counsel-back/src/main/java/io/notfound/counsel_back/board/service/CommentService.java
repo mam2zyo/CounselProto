@@ -33,7 +33,6 @@ public class CommentService {
 
         Comment comment = Comment.builder()
                 .content(filteredContent)
-                .writerName(request.getWriterName())
                 .build();
 
         post.addComment(comment);

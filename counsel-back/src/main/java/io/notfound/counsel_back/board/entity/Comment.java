@@ -22,11 +22,12 @@ public class Comment {
     @Column(nullable = false)
     private String content;
 
-    @Column(nullable = false) // [추가] 작성자 이름
-    private String writerName;
-
-
     private LocalDateTime createdAt;
+
+    // 댓글 작성자 (회원)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "writer_id")
+    private User writer;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "post_id")
@@ -45,6 +46,7 @@ public class Comment {
         reports.add(report);
         report.setComment(this); // Comment와 Report 연결
     }
+
     @PrePersist
     public void createdAt() {
         this.createdAt = LocalDateTime.now();
@@ -53,5 +55,9 @@ public class Comment {
     // 내용 수정을 위한 메서드
     public void update(String content) {
         this.content = content;
+    }
+
+    public void setWriter(User writer) {
+        this.writer = writer;
     }
 }
