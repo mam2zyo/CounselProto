@@ -6,13 +6,13 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // ✅ 초기값 true
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        await refreshApi();
+        await refreshApi(); // ✅ 쿠키에 있는 리프레시 토큰으로 검증
         setIsLoggedIn(true);
       } catch (error) {
         setIsLoggedIn(false);
@@ -27,7 +27,7 @@ export function AuthProvider({ children }) {
   const login = () => {
     setIsLoggedIn(true);
     navigate("/");
-  }
+  };
 
   const logout = async () => {
     try {
@@ -35,8 +35,9 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.log("로그 아웃 실패", error);
     } finally {
+      setIsLoggedIn(false);   // ✅ 상태 초기화 확실히
       setIsLoading(false);
-      navigate('/login');
+      navigate("/login");
     }
   };
 
