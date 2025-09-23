@@ -3,11 +3,10 @@ package io.notfound.counsel_back.board.controller;
 import io.notfound.counsel_back.board.dto.CommentRequest;
 import io.notfound.counsel_back.board.dto.CommentResponse;
 import io.notfound.counsel_back.board.service.CommentService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,11 +21,9 @@ public class CommentController {
     @PostMapping("/{postId}/comments")
     public ResponseEntity<CommentResponse> createComment(
             @PathVariable Long postId,
-            @RequestBody CommentRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @Valid @RequestBody CommentRequest request) {
 
-        String email = userDetails.getUsername();
-        CommentResponse response = commentService.createComment(postId, request, email);
+        CommentResponse response = commentService.createComment(postId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -39,21 +36,16 @@ public class CommentController {
     @PutMapping("/comments/{commentId}")
     public ResponseEntity<CommentResponse> updateComment(
             @PathVariable Long commentId,
-            @RequestBody CommentRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        String email = userDetails.getUsername();
-        CommentResponse response =
-                commentService.updateComment(commentId, request, email);
+            @Valid @RequestBody CommentRequest request) {
+        CommentResponse response = commentService.updateComment(commentId, request);
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/comments/{commentId}")
     public ResponseEntity<Void> deleteComment(
             @PathVariable Long commentId,
-            @AuthenticationPrincipal UserDetails userDetails) {
-
-        String email = userDetails.getUsername();
-        commentService.deleteComment(commentId, email);
+            @RequestBody CommentRequest request) {
+        
         return ResponseEntity.noContent().build();
     }
 }
