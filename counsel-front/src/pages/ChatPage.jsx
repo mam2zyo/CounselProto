@@ -13,6 +13,8 @@ import {
   fetchConversations,
   fetchConversationDetail,
 } from "../api/conversation";
+// ✨ [추가] 결제 관련 API 임포트
+import { checkAccessStatus, updateAccessStatus } from "../api/payment";
 
 function ChatPage() {
   const { isLoggedIn } = useAuth();
@@ -31,6 +33,9 @@ function ChatPage() {
   const [chatMode, setChatMode] = useState("text"); // 'text', 'voiceInput', 'voiceChat'
   const [isSending, setIsSending] = useState(false);
 
+  // ✨ [추가] 이용권 만료일 상태 관리
+  const [accessUntil, setAccessUntil] = useState(null);
+
   // 현재 활성화된 대화 찾기
   const activeConversation = conversations.find(
     (c) => c.id === activeConversationId
@@ -40,11 +45,15 @@ function ChatPage() {
     ? activeConversation?.messages
     : tempMessages;
 
+  // ✨ [수정] 로그인 상태에 따라 대화 및 이용권 상태를 로드
   useEffect(() => {
     if (isLoggedIn) {
       loadConversations();
+      checkUserAccess(); // 로그인 시 이용권 만료일 확인
+    } else {
+      navigate("/login");
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, navigate]);
 
   useEffect(() => {
     tempMessagesRef.current = tempMessages;
@@ -65,6 +74,50 @@ function ChatPage() {
     }
   };
 
+  // ✨ [추가] 이용권 만료일 확인 함수
+  const checkUserAccess = async () => {
+    try {
+      const response = await checkAccessStatus();
+      setAccessUntil(response.data.accessUntil);
+    } catch (error) {
+      console.error("이용권 상태 로딩 실패:", error);
+    }
+  };
+
+  // ✨ [추가] 포트원 결제창 호출 함수
+  const requestPay = () => {
+    const { IMP } = window;
+    IMP.init('imp04144282'); // 포트원 고객사 식별코드
+
+    IMP.request_pay({
+      pg: "html5_inicis",
+      pay_method: "card",
+      merchant_uid: `mid_${Date.now()}`,
+      name: "한 달 이용권",
+      amount: 10000,
+      buyer_email: "test@example.com",
+      buyer_name: "홍길동",
+      buyer_tel: "010-1234-5678",
+    }, async (rsp) => {
+      if (rsp.success) {
+        try {
+          // 결제 성공 시, 백엔드에 결제 정보 검증 및 만료일 갱신 요청
+          await updateAccessStatus({
+            imp_uid: rsp.imp_uid,
+            merchant_uid: rsp.merchant_uid,
+          });
+          alert('결제가 완료되었습니다. 이제 한 달 동안 무제한으로 이용할 수 있습니다.');
+          checkUserAccess(); // 갱신된 만료일 다시 가져와서 상태 업데이트
+        } catch (error) {
+          console.error("결제 검증 실패:", error);
+          alert("결제는 성공했으나, 이용권 갱신에 실패했습니다. 관리자에게 문의해주세요.");
+        }
+      } else {
+        alert(`결제에 실패하였습니다. 에러 내용: ${rsp.error_msg}`);
+      }
+    });
+  };
+
   const handleModeSwitch = (mode) => {
     if (!isLoggedIn) {
       navigate("/login");
@@ -76,13 +129,11 @@ function ChatPage() {
     }
   };
 
-  // 새 대화 생성 핸들러
   const handleNewConversation = async () => {
     setActiveConversationId(null);
     setTempMessages([]);
   };
 
-  // 대화 삭제 핸들러
   const handleDeleteConversation = async (id) => {
     if (!confirm("이 대화를 삭제하시겠습니까?")) return;
     try {
@@ -99,17 +150,14 @@ function ChatPage() {
     }
   };
 
-  // 수정 시작 핸들러
   const handleStartEdit = (id) => {
     setEditingConversationId(id);
   };
 
-  // 수정 취소 핸들러
   const handleCancelEdit = () => {
     setEditingConversationId(null);
   };
 
-  // 대화 제목 수정 핸들러
   const handleUpdateConversation = async (id, data) => {
     try {
       const response = await updateConversation(id, data);
@@ -127,13 +175,11 @@ function ChatPage() {
     }
   };
 
-  // 사이드바에서 특정 대화 선택시
   const handleSelectConversation = async (id) => {
-    if (editingConversationId === id) return; // 수정 중 다른 대화 선택 막기
+    if (editingConversationId === id) return;
     setActiveConversationId(id);
     setTempMessages([]);
 
-    // 선택된 대화에 messages가 없으면 로드
     const selectedConv = conversations.find((c) => c.id === id);
     if (!selectedConv || !selectedConv.messages) {
       try {
@@ -152,20 +198,28 @@ function ChatPage() {
   const handleSendMessage = async () => {
     if (input.trim() === "" || !isLoggedIn || isSending) return;
 
+    // ✨ [추가/수정] 이용권 만료 여부 확인 후 결제 유도
+    const now = new Date();
+    const expiry = accessUntil ? new Date(accessUntil) : null;
+
+    if (!expiry || now > expiry) {
+      alert("한 달 이용권이 만료되었습니다. 결제 후 다시 이용해주세요.");
+      requestPay(); // 결제창 띄우기
+      return; // 메시지 전송 중단
+    }
+
     const userMessageText = input.trim();
     setInput("");
     setIsSending(true);
 
     const isNewConversation = activeConversationId === null;
 
-    // 사용자 메시지를 ui 에 반영
     const userMessage = {
       id: Date.now(),
       message: userMessageText,
       sender: "user",
     };
 
-    // AI 응답 메시지 placeholder 추가
     const aiMessageId = Date.now() + 1;
     const aiMessagePlaceholder = {
       id: aiMessageId,
@@ -192,12 +246,10 @@ function ChatPage() {
       );
     }
 
-    // 스트리밍 시작
     streamChat(
-      activeConversationId, // null 또는 실제 ID 전달
+      activeConversationId,
       userMessageText,
       (token) => {
-        // onMessage
         const updater = (messages) => {
           const lastMessage = messages[messages.length - 1];
           if (lastMessage && lastMessage.id === aiMessageId) {
@@ -226,24 +278,21 @@ function ChatPage() {
         }
       },
       (error) => {
-        /* onError: 에러 처리 (기존과 유사하게 구현) */
         setIsSending(false);
       },
-
       async () => {
-        // onComplete
         setIsSending(false);
         if (!isNewConversation) return;
 
         try {
           const { data: list } = await fetchConversations();
-          const newConv = list[0]; // 서버가 최신순으로 내려준다고 가정
+          const newConv = list[0];
           setConversations((prev) => [
             { ...newConv, messages: tempMessagesRef.current },
             ...prev,
           ]);
           setActiveConversationId(newConv.id);
-          setTempMessages([]); // 임시 메시지 초기화
+          setTempMessages([]);
         } catch (e) {
           console.error(e);
         }
@@ -258,18 +307,27 @@ function ChatPage() {
         <Navbar />
 
         <main ref={mainContentRef} className="flex-1 overflow-y-auto p-4">
-          {/* ✨ [수정] displayMessages 사용 */}
-          {!displayMessages || displayMessages.length === 0 ? (
-            <div className="flex items-center justify-center h-screen">
-              <p className="text-gray-400 text-center -mt-50">
-                새로운 대화를 시작해보세요 ✨
-              </p>
+          {/* ✨ [수정] 이용권 만료 시 결제 유도 UI를 보여줌 */}
+          {(!accessUntil || new Date() > new Date(accessUntil)) ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <p className="text-lg mb-4">한 달 이용권이 필요합니다.</p>
+              <button onClick={requestPay} className="btn btn-primary">
+                한 달 이용권 구매하기 (₩10,000)
+              </button>
             </div>
           ) : (
-            // 메시지가 하나라도 있는 경우, 메시지 목록을 렌더링
-            displayMessages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
-            ))
+            // 이용권이 있을 때만 메시지 목록을 렌더링
+            displayMessages && displayMessages.length > 0 ? (
+              displayMessages.map((message) => (
+                <ChatMessage key={message.id} message={message} />
+              ))
+            ) : (
+              <div className="flex items-center justify-center h-screen">
+                <p className="text-gray-400 text-center -mt-50">
+                  새로운 대화를 시작해보세요 ✨
+                </p>
+              </div>
+            )
           )}
         </main>
         <ChatInput
