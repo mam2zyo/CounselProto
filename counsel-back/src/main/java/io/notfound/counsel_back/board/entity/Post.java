@@ -31,6 +31,8 @@ public class Post {
 
     private LocalDateTime createdAt;
 
+    private int views;  // 조회수 필드 추가
+
     @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>();
@@ -42,8 +44,12 @@ public class Post {
     @PrePersist
     public void createdAt() {
         this.createdAt = LocalDateTime.now();
+        this.views = 0;  // 최초 생성 시 조회수 0으로 초기화
     }
 
+    public void incrementViews() {
+        this.views++;
+    }
     public void addComment(Comment comment) {
         this.comments.add(comment);
         comment.setPost(this); // Comment 엔티티에도 Post를 설정
