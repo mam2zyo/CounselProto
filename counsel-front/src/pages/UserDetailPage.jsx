@@ -1,4 +1,4 @@
-import React from "react";
+// src/pages/UserDetailPage.jsx
 import { useParams } from "react-router-dom";
 import UserDetail from "../components/UserDetail";
 

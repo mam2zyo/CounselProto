@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { getUserProfile, updateUserProfile } from "../api/userApi";
+// src/components/UserProfile.jsx
+import { useEffect, useState } from "react";
+import { getUserProfile, updateUserProfile } from "../api/user";
 
 const UserProfile = ({ userId }) => {
   const [profile, setProfile] = useState({
     성별: "",
     나이: "",
     관심사: "",
-    고민: ""
+    고민: "",
   });
   const [editMode, setEditMode] = useState(false);
 
@@ -20,7 +21,7 @@ const UserProfile = ({ userId }) => {
           성별: data.gender || "",
           나이: data.age || "",
           관심사: data.interests || "",
-          고민: data.concern || ""
+          고민: data.concern || "",
         });
       } catch (err) {
         console.error(err.response?.data || err.message);
@@ -43,10 +44,10 @@ const UserProfile = ({ userId }) => {
   const handleUpdate = async () => {
     try {
       const updateData = {
-        gender: profile.성별,       // 그대로 보내기
-        age: Number(profile.나이),  // 숫자로 변환
+        gender: profile.성별, // 그대로 보내기
+        age: Number(profile.나이), // 숫자로 변환
         interests: profile.관심사,
-        concern: profile.고민
+        concern: profile.고민,
       };
 
       const res = await updateUserProfile(userId, updateData);
@@ -130,7 +131,10 @@ const UserProfile = ({ userId }) => {
           <p>나이: {profile.나이}</p>
           <p>관심사: {profile.관심사}</p>
           <p>고민: {profile.고민}</p>
-          <button className="btn btn-secondary mt-2" onClick={() => setEditMode(true)}>
+          <button
+            className="btn btn-secondary mt-2"
+            onClick={() => setEditMode(true)}
+          >
             수정
           </button>
         </div>

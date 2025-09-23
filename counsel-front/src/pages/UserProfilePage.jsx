@@ -1,4 +1,4 @@
-import React from "react";
+// src/pages/UserProfilePage.jsx
 import { useParams } from "react-router-dom";
 import UserProfile from "../components/UserProfile";
 
