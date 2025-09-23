@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 public class CommentResponse {
     private Long id;
     private String content;
-    private Long authorId;
     private String writerEmail; // 이름 대신 이메일 필드로 수정
     private LocalDateTime createdAt;
     private Long postId;
@@ -21,7 +20,6 @@ public class CommentResponse {
         return CommentResponse.builder()
                 .id(comment.getId())
                 .content(comment.getContent())
-                .authorId(comment.getWriter().getId())
                 .writerEmail(comment.getWriter().getEmail()) // 이름 대신 이메일로 수정
                 .createdAt(comment.getCreatedAt())
                 .postId(comment.getPost().getId())
