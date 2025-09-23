@@ -1,6 +1,8 @@
+// src/components/Sidebar.jsx
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import ConversationEditModal from "./ConversationEditModal"; // 모달 컴포넌트 임포트
 
 function Sidebar({
   userId,
@@ -11,16 +13,17 @@ function Sidebar({
   onSelectConversation,
   onDeleteConversation,
   onUpdateConversation,
-  onStartEdit,
-  onCancelEdit,
   onCloseSidebar,
 }) {
-  const [editedTitle, setEditedTitle] = useState("");
   const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
 
+  const [editingConversation, setEditingConversation] = useState(null);
+
   const themes = ["light", "dark"];
-  const [theme, setTheme] = useState(localStorage.getItem("theme") || themes[0]);
+  const [theme, setTheme] = useState(
+    localStorage.getItem("theme") || themes[0]
+  );
 
   const toggleTheme = () => {
     const nextTheme = theme === "light" ? "dark" : "light";
@@ -42,18 +45,18 @@ function Sidebar({
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
-  const handleUpdate = () => {
-    if (!editedTitle.trim()) {
-      alert("제목을 비워둘 수 없습니다.");
-      return;
-    }
-    onUpdateConversation(editingId, { title: editedTitle });
-  };
-
   const handleClose = () => {
     const drawer = document.getElementById("my-drawer");
     if (drawer) drawer.checked = false;
     if (onCloseSidebar) onCloseSidebar();
+  };
+
+  const handleOpenEditModal = (conversation) => {
+    setEditingConversation(conversation);
+  };
+
+  const handleCloseEditModal = () => {
+    setEditingConversation(null);
   };
 
   return (
@@ -84,59 +87,39 @@ function Sidebar({
           conversations.map((c) => (
             <div
               key={c.id}
-              className={`flex w-full items-center justify-between mb-0 rounded-lg hover:bg-base-200 ${
+              className={`group flex w-full items-center justify-between mb-0 rounded-lg hover:bg-base-200 ${
                 activeConversationId === c.id ? "bg-base-200 font-bold" : ""
               }`}
             >
-              {editingId === c.id ? (
-                <div className="flex-1 flex items-center">
-                  <input
-                    type="text"
-                    value={editedTitle}
-                    onChange={(e) => setEditedTitle(e.target.value)}
-                    className="input input-bordered input-xs w-full"
-                    onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
-                    autoFocus
-                  />
-                  <button
-                    className="btn btn-xs btn-ghost"
-                    onClick={handleUpdate}
-                  >
-                    ✓
-                  </button>
-                  <button
-                    className="btn btn-xs btn-ghost"
-                    onClick={onCancelEdit}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div
-                    className="flex-1 cursor-pointer truncate p-2"
-                    title={c.title}
-                    onClick={() => onSelectConversation(c.id)}
-                  >
-                    {c.title || "새로운 고민 상담"}
-                  </div>
-                  <button
-                    className="btn btn-xs btn-ghost"
-                    onClick={() => onStartEdit(c.id)}
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    className="btn btn-xs btn-ghost"
-                    onClick={() => onDeleteConversation(c.id)}
-                  >
-                    🗑
-                  </button>
-                </>
-              )}
+              <div
+                className="flex-1 cursor-pointer truncate p-2"
+                title={c.title}
+                onClick={() => onSelectConversation(c.id)}
+              >
+                {c.title || "새로운 고민 상담"}
+              </div>
+              <button
+                className="btn btn-xs btn-ghost"
+                onClick={() => handleOpenEditModal(c)}
+              >
+                ✏️
+              </button>
+              <button
+                className="btn btn-xs btn-ghost"
+                onClick={() => onDeleteConversation(c.id)}
+              >
+                🗑
+              </button>
             </div>
           ))}
       </div>
+      {/* 대화 편집 모달 */}
+      <ConversationEditModal
+        isOpen={!!editingConversation}
+        onClose={handleCloseEditModal}
+        conversation={editingConversation}
+        onUpdate={onUpdateConversation}
+      />
 
       {/* 하단: 게시판 + 마이페이지 + 테마 */}
       <div className="p-4 w-64 flex flex-col gap-2">
@@ -194,3 +177,64 @@ function Sidebar({
 }
 
 export default Sidebar;
+
+{
+  /* 대화 목록
+        {Array.isArray(conversations) &&
+          conversations.map((c) => (
+            <div
+              key={c.id}
+              className={`flex w-full items-center justify-between mb-0 rounded-lg hover:bg-base-200 ${
+                activeConversationId === c.id ? "bg-base-200 font-bold" : ""
+              }`}
+            >
+              {editingId === c.id ? (
+                <div className="flex-1 flex items-center">
+                  <input
+                    type="text"
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    className="input input-bordered input-xs w-full"
+                    onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
+                    autoFocus
+                  />
+                  <button
+                    className="btn btn-xs btn-ghost"
+                    onClick={handleUpdate}
+                  >
+                    ✓
+                  </button>
+                  <button
+                    className="btn btn-xs btn-ghost"
+                    onClick={onCancelEdit}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div
+                    className="flex-1 cursor-pointer truncate p-2"
+                    title={c.title}
+                    onClick={() => onSelectConversation(c.id)}
+                  >
+                    {c.title || "새로운 고민 상담"}
+                  </div>
+                  <button
+                    className="btn btn-xs btn-ghost"
+                    onClick={() => onStartEdit(c.id)}
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    className="btn btn-xs btn-ghost"
+                    onClick={() => onDeleteConversation(c.id)}
+                  >
+                    🗑
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+      </div> */
+}
