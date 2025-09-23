@@ -1,13 +1,13 @@
 // src/api/board.js
-
 import apiClient from "./index";
+
 // 모든 게시글 조회
 export const getAllPosts = async () => {
   return await apiClient.get("/board");
 };
 
 // 특정 게시글 조회
-export const getPostById = async (id) => {
+export const getPost = async (id) => {
   return await apiClient.get(`/board/${id}`);
 };
 

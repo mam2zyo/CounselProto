@@ -1,5 +1,5 @@
 // src/api/auth.js
-import apiClient from "./index"
+import apiClient from "./index";
 
 export const signup = async (email, password) => {
   return await apiClient.post("/auth/signup", { email, password });
@@ -10,18 +10,17 @@ export const login = async (email, password) => {
 };
 
 export const logout = async () => {
-  return await apiClient.post('/auth/logout');
+  return await apiClient.post("/auth/logout");
 };
 
-export const refreshToken = async () => {
-  return await apiClient.post('/auth/refresh');
+export const refresh = async () => {
+  return await apiClient.post("/auth/refresh");
 };
-
 
 // import axios from 'axios';
 
 // const apiClient = axios.create({
-//   baseURL: '/api/auth', 
+//   baseURL: '/api/auth',
 //   withCredentials: true
 // });
 
