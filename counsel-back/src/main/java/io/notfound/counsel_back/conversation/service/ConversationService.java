@@ -65,8 +65,8 @@ public class ConversationService {
             conversation.updateTitle(request.getTitle());
             updated = true;
         }
-        if (request.getSummary() != null) {
-            conversation.updateSummary(request.getSummary());
+        if (request.getMemo() != null) {
+            conversation.updateSummary(request.getMemo());
             updated = true;
         }
 
@@ -121,7 +121,7 @@ public class ConversationService {
         return new ConversationDetailResponse(
                 conversation.getId(),
                 conversation.getTitle(),
-                conversation.getSummary(),
+                conversation.getMemo(),
                 conversation.getCreatedAt(),
                 chatMessages
         );
