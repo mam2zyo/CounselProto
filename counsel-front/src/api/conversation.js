@@ -15,7 +15,7 @@ export const fetchConversationDetail = async (id) => {
 export const updateConversation = async (id, data) => {
   return await apiClient.put(`/conversations/${id}`, {
     title: data.title,
-    summary: data.summary,
+    memo: data.memo,
   });
 };
 
