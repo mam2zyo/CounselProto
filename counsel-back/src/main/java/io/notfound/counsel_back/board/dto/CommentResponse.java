@@ -21,7 +21,8 @@ public class CommentResponse {
         return CommentResponse.builder()
                 .id(comment.getId())
                 .content(comment.getContent())
-                .authorId(null) // [수정] 익명 댓글이므로 authorId는 null
+                .authorId(comment.getWriter().getId())
+                .writerName(comment.getWriter().getUserName())
                 .createdAt(comment.getCreatedAt())
                 .postId(comment.getPost().getId())
                 .build();

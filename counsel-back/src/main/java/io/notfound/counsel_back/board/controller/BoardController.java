@@ -4,12 +4,14 @@ import io.notfound.counsel_back.board.dto.PostRequest;
 import io.notfound.counsel_back.board.dto.PostResponse;
 import io.notfound.counsel_back.board.dto.PostUpdateRequest;
 import io.notfound.counsel_back.board.service.BoardService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
@@ -23,6 +25,7 @@ public class BoardController {
     public ResponseEntity<PostResponse> createPost(
             @ModelAttribute PostRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
+
         String email = userDetails.getUsername();
         PostResponse response = boardService.createPost(request, email);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -35,18 +38,17 @@ public class BoardController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PostResponse>> getAllPosts(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String sort) {
-        List<PostResponse> responses = boardService.getAllPosts(keyword, sort);
+    public ResponseEntity<List<PostResponse>> getAllPosts() {
+        List<PostResponse> responses = boardService.getAllPosts();
         return ResponseEntity.ok(responses);
     }
 
-    @PutMapping(value = "/{id}", consumes = {"multipart/form-data"})
+    @PutMapping("/{id}")
     public ResponseEntity<PostResponse> updatePost(
             @PathVariable Long id,
             @ModelAttribute PostUpdateRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
+
         String email = userDetails.getUsername();
         PostResponse response = boardService.updatePost(id, request, email);
         return ResponseEntity.ok(response);
