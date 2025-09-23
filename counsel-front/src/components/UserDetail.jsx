@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { getUser, deleteUser } from "../api/userApi";
+import { useEffect, useState } from "react";
+import { getUser, deleteUser } from "../api/user";
 
 const UserDetail = ({ userId }) => {
   const [user, setUser] = useState(null);
