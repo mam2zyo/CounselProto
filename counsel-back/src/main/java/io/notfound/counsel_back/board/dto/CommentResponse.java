@@ -12,7 +12,7 @@ public class CommentResponse {
     private Long id;
     private String content;
     private Long authorId;
-    private String writerName;
+    private String writerEmail; // 이름 대신 이메일 필드로 수정
     private LocalDateTime createdAt;
     private Long postId;
 
@@ -22,7 +22,7 @@ public class CommentResponse {
                 .id(comment.getId())
                 .content(comment.getContent())
                 .authorId(comment.getWriter().getId())
-                .writerName(comment.getWriter().getUserName())
+                .writerEmail(comment.getWriter().getEmail()) // 이름 대신 이메일로 수정
                 .createdAt(comment.getCreatedAt())
                 .postId(comment.getPost().getId())
                 .build();
