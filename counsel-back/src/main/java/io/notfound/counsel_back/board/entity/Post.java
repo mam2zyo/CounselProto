@@ -29,6 +29,10 @@ public class Post {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    // 조회수 필드 추가 (nullable=false, 기본값 0으로 DB 컬럼 설정 필요)
+    @Column(nullable = false)
+    private long views;
+
     private LocalDateTime createdAt;
 
     @Builder.Default
@@ -42,6 +46,13 @@ public class Post {
     @PrePersist
     public void createdAt() {
         this.createdAt = LocalDateTime.now();
+        if (this.views == 0) {
+            this.views = 0L; // 혹은 기본값 지정
+        }
+    }
+
+    public void incrementViews() {
+        this.views++;
     }
 
     public void addComment(Comment comment) {

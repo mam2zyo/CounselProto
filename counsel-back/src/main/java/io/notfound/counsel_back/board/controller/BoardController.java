@@ -33,6 +33,7 @@ public class BoardController {
 
     @GetMapping("/{id}")
     public ResponseEntity<PostResponse> getPost(@PathVariable Long id) {
+        boardService.incrementPostViews(id);  // 조회수 1 증가
         PostResponse response = boardService.getPost(id);
         return ResponseEntity.ok(response);
     }
