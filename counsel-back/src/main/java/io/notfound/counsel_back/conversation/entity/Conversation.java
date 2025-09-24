@@ -34,12 +34,17 @@ public class Conversation {
     @Column(columnDefinition = "TEXT")
     private String memo;
 
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String history;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
     public void updateTitle(String title) { this.title = title; }
-    public void updateSummary(String memo) { this.memo = memo; }
+    public void updateMemo(String memo) { this.memo = memo; }
+    public void updateHistory(String history) { this.history = history; }
 
     public void addChatMessage(ChatMessage chatMessage) {
         this.chatMessages.add(chatMessage);
