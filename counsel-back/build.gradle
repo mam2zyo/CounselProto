@@ -37,7 +37,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 //    implementation 'org.springframework.boot:spring-boot-starter-webflux'
-
+    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
+    implementation 'com.google.code.gson:gson:2.8.9'
     implementation 'com.google.genai:google-genai:1.15.0'
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
     implementation 'org.springframework.ai:spring-ai-starter-model-chat-memory-repository-jdbc'
