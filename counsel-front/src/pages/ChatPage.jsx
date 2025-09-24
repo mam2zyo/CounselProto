@@ -1,3 +1,4 @@
+// src/pages/ChatPage.jsx
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -25,7 +26,7 @@ function ChatPage() {
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [editingConversationId, setEditingConversationId] = useState(null);
   const [input, setInput] = useState("");
-  const [chatMode, setChatMode] = useState("text"); // 'text', 'voiceInput', 'voiceChat'
+  const [chatMode, setChatMode] = useState("text");
   const [isSending, setIsSending] = useState(false);
   const [accessUntil, setAccessUntil] = useState(null);
 
@@ -39,9 +40,11 @@ function ChatPage() {
 
     const init = async () => {
       try {
+        // 대화 목록
         const convResp = await fetchConversations();
         setConversations(convResp.data);
 
+        // 이용권 확인
         const accessResp = await checkAccessStatus();
         setAccessUntil(new Date(accessResp.data.accessUntil));
       } catch (e) {
@@ -72,14 +75,9 @@ function ChatPage() {
       if (!rsp.success) return alert(`결제 실패: ${rsp.error_msg}`);
 
       try {
-        // 결제 정보 DB 갱신
         await updateAccessStatus({ imp_uid: rsp.imp_uid, merchant_uid: rsp.merchant_uid });
-
-        // ✅ DB에서 최신 accessUntil 가져오기
         const accessResp = await checkAccessStatus();
         const newAccessUntil = new Date(accessResp.data.accessUntil);
-        console.log("새로운 accessUntil:", newAccessUntil);
-
         setAccessUntil(newAccessUntil);
         alert("결제 완료! 한 달 이용권이 갱신되었습니다.");
       } catch (e) {
@@ -87,6 +85,30 @@ function ChatPage() {
         alert("결제는 성공했지만 이용권 갱신에 실패했습니다.");
       }
     });
+  };
+
+  // --- 새 대화 생성 ---
+  const handleNewConversation = () => {
+    setActiveConversationId(null);
+    setTempMessages([]);
+  };
+
+  // --- 대화 선택 ---
+  const handleSelectConversation = async (id) => {
+    if (editingConversationId === id) return;
+    setActiveConversationId(id);
+    setTempMessages([]);
+
+    const selectedConv = conversations.find(c => c.id === id);
+    if (!selectedConv || !selectedConv.messages) {
+      try {
+        const resp = await fetchConversationDetail(id);
+        const detail = resp.data;
+        setConversations(prev => prev.map(c => c.id === id ? { ...c, ...detail } : c));
+      } catch (e) {
+        console.error("대화 상세 정보 로딩 실패:", e);
+      }
+    }
   };
 
   // --- 메시지 전송 ---
@@ -100,7 +122,7 @@ function ChatPage() {
     }
 
     const text = input.trim();
-    setInput(""); 
+    setInput("");
     setIsSending(true);
 
     const isNewConv = !activeConversationId;
@@ -109,9 +131,7 @@ function ChatPage() {
     const aiMsg = { id: aiMsgId, message: "...", sender: "ai" };
 
     if (isNewConv) setTempMessages(prev => [...prev, userMsg, aiMsg]);
-    else setConversations(prev => prev.map(c => c.id === activeConversationId ? {
-      ...c, messages: [...(c.messages || []), userMsg, aiMsg]
-    } : c));
+    else setConversations(prev => prev.map(c => c.id === activeConversationId ? { ...c, messages: [...(c.messages || []), userMsg, aiMsg] } : c));
 
     streamChat(
       activeConversationId,
@@ -170,8 +190,8 @@ function ChatPage() {
       <Sidebar
         conversations={conversations}
         activeConversationId={activeConversationId}
-        onNewConversation={() => { setActiveConversationId(null); setTempMessages([]); }}
-        onSelectConversation={setActiveConversationId}
+        onNewConversation={handleNewConversation}
+        onSelectConversation={handleSelectConversation}
         onDeleteConversation={async (id) => {
           if (!confirm("삭제하시겠습니까?")) return;
           try { await deleteConversation(id); setConversations(prev => prev.filter(c => c.id !== id)); if (activeConversationId === id) setActiveConversationId(null); } catch (e) { console.error(e); }
