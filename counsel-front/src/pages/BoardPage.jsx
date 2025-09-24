@@ -69,7 +69,7 @@ export default function BoardPage() {
               onClick={() => navigate(`/board/${post.postId}`)}
             >
               <div className="w-5/12 text-gray-800 font-medium">{post.title}</div>
-              <div className="w-2/12 text-sm text-gray-600">익명{post.authorName}</div>
+              <div className="w-2/12 text-sm text-gray-600">익명</div>
               <div className="w-1/12 text-center text-gray-500 text-sm">{post.comments || 0}</div>
               <div className="w-2/12 text-center text-gray-500 text-sm">
                 {post.createdAt
