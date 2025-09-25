@@ -7,5 +7,5 @@ import lombok.Setter;
 @Setter
 public class ConversationUpdateRequest {
     private String title;
-    private String summary;
+    private String memo;
 }

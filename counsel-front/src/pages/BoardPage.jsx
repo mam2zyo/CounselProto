@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { getAllPosts } from "../api/board"
+import { getAllPosts } from "../api/board";
 
 export default function BoardPage() {
   const { isLoggedIn } = useAuth();
@@ -35,42 +35,58 @@ export default function BoardPage() {
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      {/* 상단 헤더: 기존 새 글 작성 버튼 + 메인 화면 버튼 추가 */}
+    <div className="p-8 max-w-5xl mx-auto">
+      {/* 상단 헤더 */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">게시판</h1>
         <div className="flex gap-2">
           <Link to="/board/new" className="btn btn-ghost">
             새 글 작성
           </Link>
-          <button
-            className="btn btn-ghost"
-            onClick={() => navigate("/")}
-          >
+          <button className="btn btn-ghost" onClick={() => navigate("/")}>
             메인 화면
           </button>
         </div>
       </div>
 
-      {/* 게시글 목록 */}
-      <div className="space-y-4">
+      {/* 게시글 목록 - 네이버 카페 스타일 리스트 */}
+      <div className="border rounded-lg overflow-hidden shadow-sm">
+        {/* 헤더 */}
+        <div className="bg-gray-100 flex px-4 py-2 text-sm font-semibold text-gray-600">
+          <div className="w-5/12">제목</div>
+          <div className="w-2/12">작성자</div>
+          <div className="w-1/12 text-center">댓글</div>
+          <div className="w-2/12 text-center">작성일/시간</div>
+          <div className="w-2/12 text-right">상세</div>
+        </div>
+
+        {/* 게시글 */}
         {posts.length > 0 ? (
           posts.map((post) => (
             <div
               key={post.postId}
-              className="border rounded p-4 shadow-sm hover:shadow-md transition cursor-pointer"
+              className="flex px-4 py-3 items-center border-b hover:bg-gray-50 cursor-pointer transition"
               onClick={() => navigate(`/board/${post.postId}`)}
             >
-              <h2 className="text-xl font-semibold text-blue-600">
-                {post.title}
-              </h2>
-              <p className="text-sm text-gray-500 mt-1">
-                작성자: {post.authorName}
-              </p>
+              <div className="w-5/12 text-gray-800 font-medium">{post.title}</div>
+              <div className="w-2/12 text-sm text-gray-600">익명</div>
+              <div className="w-1/12 text-center text-gray-500 text-sm">{post.comments || 0}</div>
+              <div className="w-2/12 text-center text-gray-500 text-sm">
+                {post.createdAt
+                  ? new Date(post.createdAt).toLocaleString([], {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "-"}
+              </div>
+              <div className="w-2/12 text-right text-gray-400 text-xs">자세히 보기 →</div>
             </div>
           ))
         ) : (
-          <p>게시글이 없습니다.</p>
+          <p className="p-4 text-gray-500">게시글이 없습니다.</p>
         )}
       </div>
     </div>

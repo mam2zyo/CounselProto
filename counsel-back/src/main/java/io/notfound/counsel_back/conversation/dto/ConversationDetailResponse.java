@@ -15,7 +15,7 @@ import java.util.List;
 public class ConversationDetailResponse {
     private Long id;
     private String title;
-    private String summary;
+    private String memo;
     private LocalDateTime createdAt;
     private List<ChatMessageResponse> messages;
 }

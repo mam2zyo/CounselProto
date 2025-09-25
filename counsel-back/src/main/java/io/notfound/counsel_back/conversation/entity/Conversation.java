@@ -32,23 +32,22 @@ public class Conversation {
     private List<ChatMessage> chatMessages = new ArrayList<>();
 
     @Column(columnDefinition = "TEXT")
-    private String summary;
+    private String memo;
 
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
+
+    public void updateTitle(String title) { this.title = title; }
+    public void updateSummary(String memo) { this.memo = memo; }
 
     public void addChatMessage(ChatMessage chatMessage) {
         this.chatMessages.add(chatMessage);
         chatMessage.setConversation(this);
     }
 
-    public void updateTitle(String title) { this.title = title; }
-    public void updateSummary(String summary) { this.summary = summary; }
-
     @Builder
     public Conversation(User user) {
         this.user = user;
-        this.title = "새로운 고민 상담";
     }
 }
