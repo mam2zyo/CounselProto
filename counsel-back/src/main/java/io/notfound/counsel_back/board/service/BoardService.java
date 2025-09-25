@@ -56,22 +56,36 @@ public class BoardService {
 //                savedPost.getAttachments().add(attachment);
             }
         }
-        return  PostResponse.from(savedPost);
+        return PostResponse.from(savedPost);
     }
 
-    @Transactional(readOnly = true)
+    // 조회 시 조회수 자동 증가
+    @Transactional
     public PostResponse getPost(Long id) {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
+
+        post.incrementViews();  // 조회수 증가
+
         return PostResponse.from(post);
     }
 
     @Transactional(readOnly = true)
-    public List<PostResponse> getAllPosts() {
-        return postRepository.findAll().stream()
+    public List<PostResponse> getAllPostsSortedBy(String sortBy) {
+        List<Post> posts;
+        if ("views".equalsIgnoreCase(sortBy)) {
+            posts = postRepository.findAllByOrderByViewsDesc();
+        } else if ("comments".equalsIgnoreCase(sortBy)) {
+            posts = postRepository.findAllByOrderByCommentCountDesc();
+        } else { // 기본값 latest (최신순)
+            posts = postRepository.findAllByOrderByCreatedAtDesc();
+        }
+
+        return posts.stream()
                 .map(PostResponse::from)
                 .collect(Collectors.toList());
     }
+
 
     @Transactional
     public PostResponse updatePost(Long postId, PostUpdateRequest request, String email) {
@@ -129,4 +143,14 @@ public class BoardService {
         }
         postRepository.delete(post);
     }
+
+    // 조회수 증가용 메서드는 삭제해도 됨 (필요시 유지 가능)
+    /*
+    @Transactional
+    public void incrementPostViews(Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
+        post.incrementViews(); // 엔티티 내에 이 메서드가 있다고 가정
+    }
+    */
 }

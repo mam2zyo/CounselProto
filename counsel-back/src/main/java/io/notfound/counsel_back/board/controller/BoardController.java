@@ -4,7 +4,6 @@ import io.notfound.counsel_back.board.dto.PostRequest;
 import io.notfound.counsel_back.board.dto.PostResponse;
 import io.notfound.counsel_back.board.dto.PostUpdateRequest;
 import io.notfound.counsel_back.board.service.BoardService;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,8 +37,9 @@ public class BoardController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PostResponse>> getAllPosts() {
-        List<PostResponse> responses = boardService.getAllPosts();
+    public ResponseEntity<List<PostResponse>> getAllPosts(
+            @RequestParam(required = false, defaultValue = "latest") String sortBy) {
+        List<PostResponse> responses = boardService.getAllPostsSortedBy(sortBy);
         return ResponseEntity.ok(responses);
     }
 

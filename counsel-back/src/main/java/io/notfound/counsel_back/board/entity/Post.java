@@ -3,6 +3,7 @@ package io.notfound.counsel_back.board.entity;
 import io.notfound.counsel_back.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -31,6 +32,12 @@ public class Post {
 
     private LocalDateTime createdAt;
 
+    private int views;
+
+    // ⭐️ 추가: 댓글 개수 필드
+    @ColumnDefault("0")
+    private int commentCount;
+
     @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>();
@@ -42,11 +49,24 @@ public class Post {
     @PrePersist
     public void createdAt() {
         this.createdAt = LocalDateTime.now();
+        this.views = 0;
     }
 
+    public void incrementViews() {
+        this.views++;
+    }
+
+    // ⭐️ 수정: 댓글 추가 시 commentCount 증가
     public void addComment(Comment comment) {
         this.comments.add(comment);
-        comment.setPost(this); // Comment 엔티티에도 Post를 설정
+        comment.setPost(this);
+        this.commentCount++;
+    }
+
+    // ⭐️ 추가: 댓글 삭제 시 commentCount 감소
+    public void removeComment(Comment comment) {
+        this.comments.remove(comment);
+        this.commentCount--;
     }
 
     public void addAttachment(Attachment attachment) {
@@ -54,20 +74,17 @@ public class Post {
         attachment.setPost(this);
     }
 
-    // [추가] 첨부파일 제거를 위한 편의 메서드
     public void removeAttachment(Attachment attachment) {
         this.attachments.remove(attachment);
         attachment.setPost(null);
     }
 
-    // [추가] 모든 첨부파일을 제거하고 S3에서도 삭제하기 위해 파일 목록을 반환하는 메서드
     public List<Attachment> clearAttachments() {
         List<Attachment> removedAttachments = new ArrayList<>(this.attachments);
         this.attachments.clear();
         return removedAttachments;
     }
 
-    // 제목, 내용 수정 메서드 (Setter 대체)
     public void update(String title, String content) {
         this.title = title;
         this.content = content;
