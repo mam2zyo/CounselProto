@@ -1,7 +1,8 @@
 // src/pages/LoginPage.jsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { login as loginApi } from "../api/auth";
+// checkAuthStatus API 함수를 추가로 임포트합니다.
+import { login as loginApi, checkAuthStatus } from "../api/auth";
 import { useAuth } from "../contexts/AuthContext";
 import { FcGoogle } from "react-icons/fc";
 import { SiNaver } from "react-icons/si";
@@ -17,16 +18,17 @@ function LoginPage() {
     e.preventDefault();
     setError("");
     try {
-      const response = await loginApi(email, password);
+      // 1. 로그인 API 호출 (성공 시 서버가 HttpOnly 쿠키를 설정해 줌)
+      await loginApi(email, password);
 
-      // 서버 응답의 data 필드에서 사용자 정보를 추출합니다.
-      // 백엔드의 ResponseMessage 구조에 따라 response.data.data 에 사용자 객체가 있습니다.
-      const userData = response.data.data;
+      // 2. 로그인 성공 직후, 방금 받은 쿠키를 이용해 사용자 정보 조회 API(/auth/me)를 바로 호출
+      const response = await checkAuthStatus();
+      const userData = response.data.data; // ex: { id: 1, email: 'user@test.com' }
 
-      // AuthContext의 login 함수에 사용자 객체를 전달합니다.
+      // 3. 받아온 사용자 정보로 AuthContext의 전역 상태를 업데이트
       login(userData);
 
-      // 로그인 성공 후 메인 페이지('/')로 이동시킵니다.
+      // 4. 메인 페이지로 이동
       navigate("/");
     } catch (err) {
       setError("로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
@@ -62,7 +64,6 @@ function LoginPage() {
             로그인 / 회원가입
           </h2>
 
-          {/* 이메일 로그인 */}
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <input
               type="email"
