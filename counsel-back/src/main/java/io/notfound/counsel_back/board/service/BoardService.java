@@ -74,13 +74,17 @@ public class BoardService {
         List<Post> posts;
         if ("views".equalsIgnoreCase(sortBy)) {
             posts = postRepository.findAllByOrderByViewsDesc();
+        } else if ("comments".equalsIgnoreCase(sortBy)) {
+            posts = postRepository.findAllByOrderByCommentCountDesc();
         } else { // 기본값 latest (최신순)
             posts = postRepository.findAllByOrderByCreatedAtDesc();
         }
+
         return posts.stream()
                 .map(PostResponse::from)
                 .collect(Collectors.toList());
     }
+
 
     @Transactional
     public PostResponse updatePost(Long postId, PostUpdateRequest request, String email) {

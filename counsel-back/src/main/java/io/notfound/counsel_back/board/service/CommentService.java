@@ -85,6 +85,12 @@ public class CommentService {
         if (!comment.getWriter().getEmail().equals(email)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글을 삭제할 권한이 없습니다.");
         }
-        commentRepository.deleteById(commentId);
+
+        Post post = comment.getPost();
+        if (post != null) {
+            post.removeComment(comment); // ⭐ Post에서 댓글 제거 (이때 commentCount 감소)
+        }
+
+        commentRepository.delete(comment);
     }
 }
