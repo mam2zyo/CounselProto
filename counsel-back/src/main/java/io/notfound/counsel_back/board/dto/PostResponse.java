@@ -16,7 +16,7 @@ public class PostResponse {
     private String content;
     private List<String> attachmentUrls;
 
-    private Long views; // ✅ 조회수 포함
+    private long views; // ✅ 조회수 포함
 
     private String createdAt;
 

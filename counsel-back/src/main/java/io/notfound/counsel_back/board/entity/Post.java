@@ -29,7 +29,7 @@ public class Post {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    // 조회수 필드 추가 (nullable=false, 기본값 0으로 DB 컬럼 설정 필요)
+    // ⭐ 추가: 조회수 필드
     @Column(nullable = false)
     private long views;
 
@@ -46,18 +46,18 @@ public class Post {
     @PrePersist
     public void createdAt() {
         this.createdAt = LocalDateTime.now();
-        if (this.views == 0) {
-            this.views = 0L; // 혹은 기본값 지정
-        }
+        // ⭐ 수정: 새로운 게시글 생성 시 조회수 0으로 초기화
+        this.views = 0L;
     }
 
+    // ⭐ 추가: 조회수 증가 메서드
     public void incrementViews() {
         this.views++;
     }
 
     public void addComment(Comment comment) {
         this.comments.add(comment);
-        comment.setPost(this); // Comment 엔티티에도 Post를 설정
+        comment.setPost(this);
     }
 
     public void addAttachment(Attachment attachment) {
@@ -65,20 +65,17 @@ public class Post {
         attachment.setPost(this);
     }
 
-    // [추가] 첨부파일 제거를 위한 편의 메서드
     public void removeAttachment(Attachment attachment) {
         this.attachments.remove(attachment);
         attachment.setPost(null);
     }
 
-    // [추가] 모든 첨부파일을 제거하고 S3에서도 삭제하기 위해 파일 목록을 반환하는 메서드
     public List<Attachment> clearAttachments() {
         List<Attachment> removedAttachments = new ArrayList<>(this.attachments);
         this.attachments.clear();
         return removedAttachments;
     }
 
-    // 제목, 내용 수정 메서드 (Setter 대체)
     public void update(String title, String content) {
         this.title = title;
         this.content = content;
