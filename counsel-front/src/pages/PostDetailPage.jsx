@@ -1,35 +1,33 @@
 // src/pages/PostDetailPage.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
 import CommentsBox from "../components/CommentsBox";
-
-// axios 공통 설정 (이 파일 안에서만 사용)
-const http = axios.create({
-  baseURL: "/api",
-  withCredentials: true,
-  headers: { "Content-Type": "application/json" },
-});
-http.defaults.xsrfCookieName = "XSRF-TOKEN";
-http.defaults.xsrfHeaderName = "X-XSRF-TOKEN";
+import apiClient from "../api";
+import { deletePost as deletePostApi } from "../api/board";
 
 export default function PostDetailPage() {
   const { postId } = useParams(); // 'new' or 숫자
   const isNewPost = postId === "new";
   const navigate = useNavigate();
-  const { user } = useAuth(); // ✅ 현재 로그인 유저 정보 (id, email 포함 가정)
+  const { user } = useAuth(); // 현재 로그인 유저 정보 (id, email 포함 가정)
 
   // 게시글 form state
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [attachments, setAttachments] = useState([]); // 기존 첨부 URL들
-  const [newFiles, setNewFiles] = useState([]);       // 새로 추가할 파일
+  const [newFiles, setNewFiles] = useState([]); // 새로 추가할 파일
   const [deletedUrls, setDeletedUrls] = useState([]); // 삭제할 기존 파일 URL
 
+  // ✅ 개발(StrictMode)에서 상세 조회 중복 실행 방지
+  const fetchedRef = useRef(false);
+
   useEffect(() => {
-    if (!isNewPost) fetchPost();
-    else {
+    if (!isNewPost) {
+      if (fetchedRef.current) return; // 이미 조회했다면 재호출 방지
+      fetchedRef.current = true;
+      fetchPost();
+    } else {
       setTitle("");
       setContent("");
       setAttachments([]);
@@ -39,10 +37,10 @@ export default function PostDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postId]);
 
-  // 게시글 단건 조회: GET /api/board/{postId}
+  // 게시글 단건 조회: GET /api/board/{postId}  (서버에서 조회수 +1)
   const fetchPost = async () => {
     try {
-      const { data } = await http.get(`/board/${postId}`);
+      const { data } = await apiClient.get(`/board/${postId}`);
       setTitle(data.title ?? "");
       setContent(data.content ?? "");
       setAttachments(data.attachmentUrls ?? []);
@@ -54,7 +52,7 @@ export default function PostDetailPage() {
   };
 
   const handleFileChange = (e) => {
-    setNewFiles(Array.from(e.target.files));
+    setNewFiles(Array.from(e.target.files || []));
   };
 
   const handleDeleteAttachment = (url) => {
@@ -68,16 +66,22 @@ export default function PostDetailPage() {
       const fd = new FormData();
       fd.append("title", title);
       fd.append("content", content);
-      newFiles.forEach((file) => fd.append("newAttachments", file));
-      deletedUrls.forEach((url) => fd.append("deletedAttachmentUrls", url));
 
       if (isNewPost) {
-        // POST /api/board
-        await axios.post("/api/board", fd, { withCredentials: true });
+        // ✅ 새 글: 백엔드 createPost(PostRequest)의 파일 키는 'attachments'
+        newFiles.forEach((file) => fd.append("attachments", file));
+        await apiClient.post("/board", fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       } else {
-        // PUT /api/board/{postId}
-        await axios.put(`/api/board/${postId}`, fd, { withCredentials: true });
+        // ✅ 수정: updatePost(PostUpdateRequest)의 키는 'newAttachments' / 'deletedAttachmentUrls'
+        newFiles.forEach((file) => fd.append("newAttachments", file));
+        deletedUrls.forEach((url) => fd.append("deletedAttachmentUrls", url));
+        await apiClient.put(`/board/${postId}`, fd, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       }
+
       navigate("/board");
     } catch (err) {
       console.error("게시글 저장 실패:", err);
@@ -88,8 +92,7 @@ export default function PostDetailPage() {
   const handleDeletePost = async () => {
     if (!window.confirm("정말 이 게시글을 삭제하시겠습니까?")) return;
     try {
-      // DELETE /api/board/{postId}
-      await http.delete(`/board/${postId}`);
+      await deletePostApi(postId);
       navigate("/board");
     } catch (err) {
       console.error("게시글 삭제 실패:", err);
@@ -143,7 +146,7 @@ export default function PostDetailPage() {
                   rel="noopener noreferrer"
                   className="link link-primary"
                 >
-                  {url.split("/").pop()}
+                  {decodeURIComponent(url.split("/").pop() || "file")}
                 </a>
                 <button
                   type="button"
@@ -162,6 +165,7 @@ export default function PostDetailPage() {
             multiple
             onChange={handleFileChange}
             className="file-input file-input-bordered w-full"
+            accept="*/*"
           />
         </div>
 
@@ -171,12 +175,20 @@ export default function PostDetailPage() {
           </button>
 
           {!isNewPost && (
-            <button type="button" className="btn btn-error" onClick={handleDeletePost}>
+            <button
+              type="button"
+              className="btn btn-error"
+              onClick={handleDeletePost}
+            >
               삭제
             </button>
           )}
 
-          <button type="button" className="btn" onClick={() => navigate("/board")}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => navigate("/board")}
+          >
             목록으로
           </button>
         </div>
@@ -187,7 +199,7 @@ export default function PostDetailPage() {
         <CommentsBox
           postId={Number(postId)}
           currentUserId={user?.id ?? null}
-          currentUserEmail={user?.email ?? null}  // ✅ 이메일 전달
+          currentUserEmail={user?.email ?? null} // 이메일 전달
         />
       )}
     </div>

@@ -1,3 +1,4 @@
+// src/pages/BoardPage.jsx
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -55,6 +56,7 @@ export default function BoardPage() {
         <div className="bg-gray-100 flex px-4 py-2 text-sm font-semibold text-gray-600">
           <div className="w-5/12">제목</div>
           <div className="w-2/12">작성자</div>
+          <div className="w-1/12 text-center">조회수</div>
           <div className="w-1/12 text-center">댓글</div>
           <div className="w-2/12 text-center">작성일/시간</div>
           <div className="w-2/12 text-right">상세</div>
@@ -70,7 +72,11 @@ export default function BoardPage() {
             >
               <div className="w-5/12 text-gray-800 font-medium">{post.title}</div>
               <div className="w-2/12 text-sm text-gray-600">익명</div>
-              <div className="w-1/12 text-center text-gray-500 text-sm">{post.comments || 0}</div>
+              <div className="w-1/12 text-center text-gray-500 text-sm">{post.views ?? 0}</div>
+              <div className="w-1/12 text-center text-gray-500 text-sm">
+              
+                {post.comments || 0}
+              </div>
               <div className="w-2/12 text-center text-gray-500 text-sm">
                 {post.createdAt
                   ? new Date(post.createdAt).toLocaleString([], {
@@ -82,7 +88,9 @@ export default function BoardPage() {
                     })
                   : "-"}
               </div>
-              <div className="w-2/12 text-right text-gray-400 text-xs">자세히 보기 →</div>
+              <div className="w-2/12 text-right text-gray-400 text-xs">
+                자세히 보기 →
+              </div>
             </div>
           ))
         ) : (
