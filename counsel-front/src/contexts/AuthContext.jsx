@@ -1,51 +1,77 @@
 import { createContext, useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { refresh as refreshApi, logout as logoutApi } from "../api/auth";
+import { refresh as refreshApi, me as meApi, logout as logoutApi } from "../api/auth";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);        // { email } 형태
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // ✅ 초기값 true
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkAuthStatus = async () => {
+    (async () => {
       try {
-        await refreshApi(); // ✅ 쿠키에 있는 리프레시 토큰으로 검증
-        setIsLoggedIn(true);
+        // 1) 리프레시 시도: 쿠키 없으면 401이 떨어짐 (정상 비로그인 흐름)
+        try {
+          await refreshApi();
+        } catch (e) {
+          if (e?.response?.status !== 401) {
+            console.error("[Auth] refresh error:", e?.response?.status, e?.response?.data || e);
+          }
+          // 401은 비로그인으로 간주 → 아래 me() 스킵
+          setIsLoggedIn(false);
+          setUser(null);
+          return;
+        }
+
+        // 2) me()로 사용자 정보 조회
+        const meData = await meApi(); // { email } 또는 래핑된 data
+        if (meData?.email) {
+          setUser({ email: meData.email });
+          setIsLoggedIn(true);
+        } else {
+          setUser(null);
+          setIsLoggedIn(false);
+        }
       } catch (error) {
+        console.error("[Auth] init auth failed:", error);
+        setUser(null);
         setIsLoggedIn(false);
-        console.log("자동 로그인 실패");
       } finally {
         setIsLoading(false);
       }
-    };
-    checkAuthStatus();
+    })();
   }, []);
 
-  const login = () => {
-    setIsLoggedIn(true);
-    navigate("/");
+  // 이메일/비번 로그인 혹은 OAuth 성공 직후, meData를 넘겨 호출
+  const login = (meData) => {
+    if (meData && meData.email) {
+      setUser({ email: meData.email });
+      setIsLoggedIn(true);
+    } else {
+      setUser(null);
+      setIsLoggedIn(false);
+    }
   };
 
   const logout = async () => {
     try {
       await logoutApi();
-    } catch (error) {
-      console.log("로그 아웃 실패", error);
+    } catch (e) {
+      console.warn("[Auth] logout error (ignored):", e?.response?.status);
     } finally {
-      setIsLoggedIn(false);   // ✅ 상태 초기화 확실히
+      setUser(null);
+      setIsLoggedIn(false);
       setIsLoading(false);
       navigate("/login");
     }
   };
 
-  const value = { isLoggedIn, login, logout, isLoading };
+  const value = { user, isLoggedIn, isLoading, login, logout };
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  if (isLoading) return <div>Loading...</div>;
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

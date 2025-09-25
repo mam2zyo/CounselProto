@@ -11,12 +11,27 @@ function SignupPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
     try {
-      const response = await signup(email, password);
-      localStorage.setItem("accessToken", response.data.accessToken);
-      navigate("/");
+      const res = await signup(email, password);
+
+      // ✅ 널 가드
+      const accessToken = res?.data?.accessToken;
+
+      if (accessToken) {
+        // 토큰을 응답 바디로 주는 백엔드인 경우
+        localStorage.setItem("accessToken", accessToken);
+        navigate("/");
+      } else {
+        // 대부분의 백엔드는 회원가입 후 토큰을 주지 않음 → 로그인으로 유도
+        navigate("/login", { state: { emailPrefill: email } });
+      }
     } catch (err) {
-      setError("회원가입에 실패했습니다. 이메일 혹은 비밀번호를 확인해주세요.");
+      const msg =
+        err?.response?.data?.message ??
+        err?.response?.data?.error ??
+        "회원가입에 실패했습니다. 이메일 혹은 비밀번호를 확인해주세요.";
+      setError(msg);
       console.error(err);
     }
   };
