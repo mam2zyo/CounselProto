@@ -15,7 +15,11 @@ public class PostResponse {
     private String title;
     private String content;
     private List<String> attachmentUrls;
+
+    private Long views; // ✅ 조회수 포함
+
     private String createdAt;
+
 
     public static PostResponse from(Post post) {
         PostResponse response = new PostResponse();
@@ -25,7 +29,11 @@ public class PostResponse {
         response.attachmentUrls = post.getAttachments().stream()
                 .map(Attachment::getFileUrl)
                 .collect(Collectors.toList());
+
+        response.views = post.getViews();  // ✅ 조회수 할당 추가
+
         response.createdAt = post.getCreatedAt() != null ? post.getCreatedAt().toString() : null;
+
         return response;
     }
 }

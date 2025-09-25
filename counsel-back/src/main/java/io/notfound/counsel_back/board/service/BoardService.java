@@ -55,7 +55,7 @@ public class BoardService {
                 savedPost.getAttachments().add(attachment);
             }
         }
-        return  PostResponse.from(savedPost);
+        return PostResponse.from(savedPost);
     }
 
     @Transactional(readOnly = true)
@@ -127,5 +127,13 @@ public class BoardService {
             s3Service.deleteFile(attachment.getFileUrl());
         }
         postRepository.delete(post);
+    }
+
+    // 조회수 증가 분리 메서드
+    @Transactional
+    public void incrementPostViews(Long postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
+        post.incrementViews();
     }
 }
