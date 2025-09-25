@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { getPost, deletePost, createPost, updatePost } from "../api/board";
-import { getCommentsByPostId, createComment } from "../api/comment"
+import { getCommentsByPostId, createComment } from "../api/comment";
 
 // 이 페이지는 새 글 작성(/board/new)과 상세 보기/수정(/board/:postId)을 모두 처리합니다.
 export default function PostDetailPage() {
@@ -60,8 +60,18 @@ export default function PostDetailPage() {
     const formData = new FormData();
     formData.append("title", title);
     formData.append("content", content);
-    newFiles.forEach((file) => formData.append("newAttachments", file));
-    deletedUrls.forEach((url) => formData.append("deletedAttachmentUrls", url));
+
+    // 백엔드 PostRequest, PostUpdateRequest DTO의 필드명과 일치 필요
+    // create: attachments, update: newAttachments
+    const filesKey = isNewPost ? "attachments" : "newAttachments";
+    newFiles.forEach((file) => formData.append(filesKey, file));
+
+    // 수정시만 제공
+    if (!isNewPost) {
+      deletedUrls.forEach((url) =>
+        formData.append("deletedAttachmentUrls", url)
+      );
+    }
 
     try {
       if (isNewPost) {
@@ -99,7 +109,7 @@ export default function PostDetailPage() {
       console.error("댓글 작성 실패", error);
     }
   };
-  
+
   // (댓글 수정/삭제 기능은 이 컴포넌트가 너무 커지므로 CommentSection.jsx 등으로 분리하는 것이 좋습니다)
 
   return (
@@ -135,10 +145,19 @@ export default function PostDetailPage() {
           <div className="mb-2">
             {attachments.map((url) => (
               <div key={url} className="flex items-center gap-2">
-                <a href={url} target="_blank" rel="noopener noreferrer" className="link link-primary">
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="link link-primary"
+                >
                   {url.split("/").pop()}
                 </a>
-                <button type="button" onClick={() => handleDeleteAttachment(url)} className="btn btn-xs btn-error">
+                <button
+                  type="button"
+                  onClick={() => handleDeleteAttachment(url)}
+                  className="btn btn-xs btn-error"
+                >
                   삭제
                 </button>
               </div>
@@ -157,11 +176,19 @@ export default function PostDetailPage() {
             {isNewPost ? "작성 완료" : "수정 완료"}
           </button>
           {!isNewPost && (
-            <button type="button" onClick={handleDeletePost} className="btn btn-error">
+            <button
+              type="button"
+              onClick={handleDeletePost}
+              className="btn btn-error"
+            >
               삭제
             </button>
           )}
-          <button type="button" onClick={() => navigate("/board")} className="btn">
+          <button
+            type="button"
+            onClick={() => navigate("/board")}
+            className="btn"
+          >
             목록으로
           </button>
         </div>
