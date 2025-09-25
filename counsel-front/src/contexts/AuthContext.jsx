@@ -38,6 +38,7 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       await logoutApi();
+      window.location.reload(); // 페이지를 새로고침하여 로그인 상태를 반영합니다.
     } catch (error) {
       console.log("로그 아웃 실패", error);
     } finally {
