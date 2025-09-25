@@ -17,7 +17,7 @@ public class PromptManager {
 
     public static final String HISTORY_GEN_PROMPT = "유저와 네가 나눈 대화를 요약해서 정리해 줘";
 
-    public
+
 
     // 프롬프트 및 스트리밍 로직 (기존과 거의 동일)
 //        OpenAiChatOptions options = OpenAiChatOptions.builder()
