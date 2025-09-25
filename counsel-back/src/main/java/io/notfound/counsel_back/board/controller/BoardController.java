@@ -37,12 +37,17 @@ public class BoardController {
         return ResponseEntity.ok(response);
     }
 
+    // [수정] 검색 기능 추가: GET /api/board?keyword=검색어
     @GetMapping
-    public ResponseEntity<List<PostResponse>> getAllPosts() {
-        List<PostResponse> responses = boardService.getAllPosts();
+    public ResponseEntity<List<PostResponse>> getAllPosts(@RequestParam(required = false) String keyword) {
+        List<PostResponse> responses;
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            responses = boardService.searchPosts(keyword);
+        } else {
+            responses = boardService.getAllPosts();
+        }
         return ResponseEntity.ok(responses);
     }
-
     @PutMapping("/{id}")
     public ResponseEntity<PostResponse> updatePost(
             @PathVariable Long id,
