@@ -72,7 +72,7 @@ public class ChatService {
 
         // 새 대화인 경우, 여기서 conversation이 처음 DB에 저장됩니다.
         conversationRepository.save(conversation);
-        chatMessageRepository.save(userMessage);
+//        chatMessageRepository.save(userMessage);
 
         // ChatMemory 로직
         String conversationIdStr = conversation.getId().toString();
