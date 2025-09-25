@@ -8,7 +8,7 @@ function Sidebar({
   userId,
   conversations,
   activeConversationId,
-  editingId,
+  // editingId,
   onNewConversation,
   onSelectConversation,
   onDeleteConversation,
@@ -32,14 +32,14 @@ function Sidebar({
     document.documentElement.setAttribute("data-theme", nextTheme);
   };
 
-  useEffect(() => {
-    if (editingId) {
-      const conversationToEdit = conversations.find((c) => c.id === editingId);
-      if (conversationToEdit) {
-        setEditedTitle(conversationToEdit.title || "");
-      }
-    }
-  }, [editingId, conversations]);
+  // useEffect(() => {
+  //   if (editingId) {
+  //     const conversationToEdit = conversations.find((c) => c.id === editingId);
+  //     if (conversationToEdit) {
+  //       setEditedTitle(conversationToEdit.title || "");
+  //     }
+  //   }
+  // }, [editingId, conversations]);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -177,64 +177,3 @@ function Sidebar({
 }
 
 export default Sidebar;
-
-{
-  /* 대화 목록
-        {Array.isArray(conversations) &&
-          conversations.map((c) => (
-            <div
-              key={c.id}
-              className={`flex w-full items-center justify-between mb-0 rounded-lg hover:bg-base-200 ${
-                activeConversationId === c.id ? "bg-base-200 font-bold" : ""
-              }`}
-            >
-              {editingId === c.id ? (
-                <div className="flex-1 flex items-center">
-                  <input
-                    type="text"
-                    value={editedTitle}
-                    onChange={(e) => setEditedTitle(e.target.value)}
-                    className="input input-bordered input-xs w-full"
-                    onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
-                    autoFocus
-                  />
-                  <button
-                    className="btn btn-xs btn-ghost"
-                    onClick={handleUpdate}
-                  >
-                    ✓
-                  </button>
-                  <button
-                    className="btn btn-xs btn-ghost"
-                    onClick={onCancelEdit}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div
-                    className="flex-1 cursor-pointer truncate p-2"
-                    title={c.title}
-                    onClick={() => onSelectConversation(c.id)}
-                  >
-                    {c.title || "새로운 고민 상담"}
-                  </div>
-                  <button
-                    className="btn btn-xs btn-ghost"
-                    onClick={() => onStartEdit(c.id)}
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    className="btn btn-xs btn-ghost"
-                    onClick={() => onDeleteConversation(c.id)}
-                  >
-                    🗑
-                  </button>
-                </>
-              )}
-            </div>
-          ))}
-      </div> */
-}
