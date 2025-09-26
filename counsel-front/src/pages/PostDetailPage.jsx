@@ -1,16 +1,16 @@
 // src/pages/PostDetailPage.jsx
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { getPost, deletePost, createPost, updatePost, recordView } from "../api/board";
-import { getCommentsByPostId, createComment } from "../api/comment";
+// import { useAuth } from "../contexts/AuthContext";  // 어디서 사용하는지 확인 필요
+import { getPost, deletePost, createPost, updatePost, recordView } from "../api/board"; // ✅ recordView 추가
+import CommentsBox from "../components/CommentsBox";
 
 // 이 페이지는 새 글 작성(/board/new)과 상세 보기/수정(/board/:postId)을 모두 처리합니다.
 export default function PostDetailPage() {
   const { postId } = useParams(); // URL에서 postId 가져오기. 'new'일 수도 있음
   const isNewPost = postId === "new";
   const navigate = useNavigate();
-  const { user } = useAuth(); // 현재 로그인된 사용자 정보 (id, userName 등 포함 가정)
+  // const { user } = useAuth(); // 현재 로그인된 사용자 정보 (id, userName 등 포함 가정)
 
   // Form State
   const [title, setTitle] = useState("");
@@ -18,10 +18,6 @@ export default function PostDetailPage() {
   const [attachments, setAttachments] = useState([]); // 기존 첨부파일 목록
   const [newFiles, setNewFiles] = useState([]); // 새로 추가할 파일
   const [deletedUrls, setDeletedUrls] = useState([]); // 삭제할 첨부파일 URL
-
-  // Comment State
-  const [comments, setComments] = useState([]);
-  const [newComment, setNewComment] = useState("");
 
   // ✅ postId 별 1회만 fetch되도록 가드
   const fetchedForPostIdRef = useRef(null);
@@ -43,39 +39,32 @@ export default function PostDetailPage() {
   }, [postId, isNewPost]);
 
   useEffect(() => {
+    if (!isNewPost) {
+      fetchPost();
+    }
+  }, [postId, isNewPost]);
+
+  useEffect(() => {
     if (isNewPost) return;
 
     // 같은 postId로 이미 가져왔으면 재호출 방지 (React 18 StrictMode 대응)
     if (fetchedForPostIdRef.current === postId) return;
     fetchedForPostIdRef.current = postId;
 
-    fetchPostAndComments();
+    // fetchPostAndComments(); // ❌ 댓글 로직은 CommentsBox로 이관
+    fetchPost(); // ✅ 게시글만 조회 (댓글은 CommentsBox가 맡음)
   }, [postId, isNewPost]);
 
-  const fetchPostAndComments = async () => {
+  const fetchPost = async () => {
     try {
-      const [postRes, commentsRes] = await Promise.all([
-        getPost(postId),              // ✅ 이제 증가 없음(데이터만)
-        getCommentsByPostId(postId),
-      ]);
-      const postData = postRes.data;
+      const res = await getPost(postId);
+      const postData = res.data;
       setTitle(postData.title);
       setContent(postData.content);
       setAttachments(postData.attachmentUrls || []);
-      setComments(commentsRes.data || []);
     } catch (error) {
-      console.error("게시글 또는 댓글 조회 실패", error);
+      console.error("게시글 조회 실패", error);
       navigate("/board");
-    }
-  };
-
-  // ✅ 댓글만 새로고침 (조회수 추가 증가 방지)
-  const refreshCommentsOnly = async () => {
-    try {
-      const { data } = await getCommentsByPostId(postId);
-      setComments(data || []);
-    } catch (e) {
-      console.error("댓글 재조회 실패", e);
     }
   };
 
@@ -128,19 +117,6 @@ export default function PostDetailPage() {
         console.error("게시글 삭제 실패", error);
         alert("게시글 삭제에 실패했습니다.");
       }
-    }
-  };
-
-  const handleCommentSubmit = async (e) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-    try {
-      await createComment(postId, { content: newComment });
-      setNewComment("");
-      // ❗ 기존: fetchPostAndComments();  → 조회수 증가 API 호출 아님이지만 불필요한 전체 리패치
-      await refreshCommentsOnly(); // ✅ 댓글만 갱신
-    } catch (error) {
-      console.error("댓글 작성 실패", error);
     }
   };
 
@@ -229,36 +205,7 @@ export default function PostDetailPage() {
       </form>
 
       {/* 댓글 섹션 (새 글 작성이 아닐 때만 표시) */}
-      {!isNewPost && (
-        <div>
-          <h2 className="text-2xl font-bold mb-4">댓글</h2>
-          {/* 댓글 목록 */}
-          <div className="space-y-3 mb-6">
-            {comments.map((comment) => (
-              <div key={comment.id} className="p-3 border rounded bg-base-200">
-                <p className="font-semibold">{comment.writerName}</p>
-                <p>{comment.content}</p>
-                <p className="text-xs text-gray-500">
-                  {new Date(comment.createdAt).toLocaleString()}
-                </p>
-              </div>
-            ))}
-          </div>
-          {/* 댓글 작성 폼 */}
-          <form onSubmit={handleCommentSubmit} className="flex gap-2">
-            <input
-              type="text"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="댓글을 입력하세요"
-              className="input input-bordered flex-grow"
-            />
-            <button type="submit" className="btn btn-secondary">
-              등록
-            </button>
-          </form>
-        </div>
-      )}
+      {!isNewPost && <CommentsBox postId={postId} />}
     </div>
   );
 }

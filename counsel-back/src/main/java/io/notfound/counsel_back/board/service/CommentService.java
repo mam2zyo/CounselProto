@@ -33,6 +33,7 @@ public class CommentService {
                 .orElseThrow(() -> new NoSuchElementException("Post not found with id: " + postId));
 
         // 인증된 사용자 정보로 작성자 설정
+        // 이메일로 작성자 찾기
         User writer = userRepository.findByEmail(email)
                 .orElseThrow(() -> new NoSuchElementException("User not found with email: " + email));
 

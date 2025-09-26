@@ -42,7 +42,7 @@ function Navbar() {
           style={{ lineHeight: 1 }}
           onClick={() => {}}
         >
-          고민 상담소
+          마음 톡톡
         </button>
       </div>
 

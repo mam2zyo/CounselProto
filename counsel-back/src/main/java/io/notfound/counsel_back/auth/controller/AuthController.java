@@ -1,6 +1,7 @@
 package io.notfound.counsel_back.auth.controller;
 
 import io.notfound.counsel_back.auth.dto.LoginRequestDto;
+import io.notfound.counsel_back.auth.dto.UserInfoResponse;
 import io.notfound.counsel_back.auth.service.AuthService;
 import io.notfound.counsel_back.common.exception.CustomException;
 import io.notfound.counsel_back.common.exception.ErrorCode;
@@ -10,6 +11,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -50,5 +53,15 @@ public class AuthController {
                                                         HttpServletResponse response) {
         authService.logout(request, response);
         return ResponseEntity.ok(ResponseMessage.of(200, "로그아웃이 완료되었습니다."));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<ResponseMessage<UserInfoResponse>> getCurrentUser(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String email = userDetails.getUsername();
+        UserInfoResponse userInfo = authService.getUserInfo(email);
+
+        return ResponseEntity.ok(ResponseMessage.of(200, "사용자 정보 조회 성공", userInfo));
     }
 }
