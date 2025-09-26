@@ -32,9 +32,12 @@ public class Post {
 
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
+    @ColumnDefault("0")
     private int views;
 
-    // ⭐️ 추가: 댓글 개수 필드
+    // 댓글 개수 DB 저장 (목록 정렬/표시에 사용)
+    @Column(nullable = false)
     @ColumnDefault("0")
     private int commentCount;
 
@@ -48,25 +51,28 @@ public class Post {
 
     @PrePersist
     public void createdAt() {
-        this.createdAt = LocalDateTime.now();
-        this.views = 0;
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        // primitives 는 기본 0이지만, 명시적으로 초기화해 두면 안전
+        this.views = (this.views < 0) ? 0 : this.views;
+        this.commentCount = (this.commentCount < 0) ? 0 : this.commentCount;
     }
 
+    // (참고) 조회수는 서비스/레포지토리에서 JPQL UPDATE로 원자적으로 증가시킬 예정
     public void incrementViews() {
         this.views++;
     }
 
-    // ⭐️ 수정: 댓글 추가 시 commentCount 증가
+    // 댓글 컬렉션 관리만 담당 (commentCount 증감은 서비스에서 DB 원자 연산으로 처리)
     public void addComment(Comment comment) {
         this.comments.add(comment);
         comment.setPost(this);
-        this.commentCount++;
     }
 
-    // ⭐️ 추가: 댓글 삭제 시 commentCount 감소
     public void removeComment(Comment comment) {
         this.comments.remove(comment);
-        this.commentCount--;
+        comment.setPost(null);
     }
 
     public void addAttachment(Attachment attachment) {

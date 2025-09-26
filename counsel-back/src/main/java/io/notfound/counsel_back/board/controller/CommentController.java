@@ -25,7 +25,10 @@ public class CommentController {
             @RequestBody CommentRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        String email = userDetails.getUsername();
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        final String email = userDetails.getUsername();
         CommentResponse response = commentService.createComment(postId, request, email);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -41,9 +44,12 @@ public class CommentController {
             @PathVariable Long commentId,
             @RequestBody CommentRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
-        String email = userDetails.getUsername();
-        CommentResponse response =
-                commentService.updateComment(commentId, request, email);
+
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        final String email = userDetails.getUsername();
+        CommentResponse response = commentService.updateComment(commentId, request, email);
         return ResponseEntity.ok(response);
     }
 
@@ -52,7 +58,10 @@ public class CommentController {
             @PathVariable Long commentId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        String email = userDetails.getUsername();
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        final String email = userDetails.getUsername();
         commentService.deleteComment(commentId, email);
         return ResponseEntity.noContent().build();
     }
