@@ -1,9 +1,11 @@
 package io.notfound.counsel_back.auth.service;
 
+import io.notfound.counsel_back.auth.dto.UserInfoResponse;
 import io.notfound.counsel_back.common.exception.CustomException;
 import io.notfound.counsel_back.common.exception.ErrorCode;
 import io.notfound.counsel_back.common.util.CookieUtil;
 import io.notfound.counsel_back.auth.dto.LoginRequestDto;
+import io.notfound.counsel_back.conversation.entity.Conversation;
 import io.notfound.counsel_back.user.entity.User;
 import io.notfound.counsel_back.user.entity.UserRole;
 import io.notfound.counsel_back.user.repository.UserRepository;
@@ -13,9 +15,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Slf4j
 @Service
@@ -130,5 +134,13 @@ public class AuthService {
 
         CookieUtil.deleteTokens(response);
         log.info("로그아웃 완료");
+    }
+
+    public UserInfoResponse getUserInfo(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + email
+                ));
+        return UserInfoResponse.from(user);       
     }
 }

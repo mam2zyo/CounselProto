@@ -42,7 +42,8 @@ public class BoardService {
 
         final Post savedPost = postRepository.save(post);
 
-        if (request.getAttachments() != null) {
+        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
+
             for (MultipartFile file : request.getAttachments()) {
                 String fileUrl = s3Service.uploadFile(file); // 파일 S3 업로드
                 Attachment attachment = Attachment.builder()
@@ -52,7 +53,7 @@ public class BoardService {
                         .build();
 
                 attachmentRepository.save(attachment);
-                savedPost.getAttachments().add(attachment);
+//                savedPost.getAttachments().add(attachment);
             }
         }
         return  PostResponse.from(savedPost);

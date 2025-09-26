@@ -33,7 +33,6 @@ public class S3Service {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                     .bucket(bucket)
                     .key(fileName)
-                    .acl(ObjectCannedACL.PUBLIC_READ)  // Public 읽기 권한 설정
                     .build();
 
             // 파일을 RequestBody로 변환하여 업로드
