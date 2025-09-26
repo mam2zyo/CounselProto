@@ -1,8 +1,8 @@
 // src/pages/PostDetailPage.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { getPost, deletePost, createPost, updatePost } from "../api/board";
+import { getPost, deletePost, createPost, updatePost, recordView } from "../api/board";
 import { getCommentsByPostId, createComment } from "../api/comment";
 
 // 이 페이지는 새 글 작성(/board/new)과 상세 보기/수정(/board/:postId)을 모두 처리합니다.
@@ -23,16 +23,39 @@ export default function PostDetailPage() {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
 
+  // ✅ postId 별 1회만 fetch되도록 가드
+  const fetchedForPostIdRef = useRef(null);
+
+  // ✅ 상세 진입 시 "유니크 조회" 1회만 기록 (백엔드가 유니크 가드)
+  const recordedViewRef = useRef(false);
   useEffect(() => {
-    if (!isNewPost) {
-      fetchPostAndComments();
+    if (isNewPost || !postId) return;
+
+    // 같은 렌더 사이클 중복 방지
+    if (recordedViewRef.current) return;
+    recordedViewRef.current = true;
+
+    // 탭 세션 기준 1회만 기록
+    const key = `viewed:${postId}`;
+    if (!sessionStorage.getItem(key)) {
+      recordView(postId).finally(() => sessionStorage.setItem(key, "1"));
     }
-  }, [postId]);
+  }, [postId, isNewPost]);
+
+  useEffect(() => {
+    if (isNewPost) return;
+
+    // 같은 postId로 이미 가져왔으면 재호출 방지 (React 18 StrictMode 대응)
+    if (fetchedForPostIdRef.current === postId) return;
+    fetchedForPostIdRef.current = postId;
+
+    fetchPostAndComments();
+  }, [postId, isNewPost]);
 
   const fetchPostAndComments = async () => {
     try {
       const [postRes, commentsRes] = await Promise.all([
-        getPost(postId),
+        getPost(postId),              // ✅ 이제 증가 없음(데이터만)
         getCommentsByPostId(postId),
       ]);
       const postData = postRes.data;
@@ -43,6 +66,16 @@ export default function PostDetailPage() {
     } catch (error) {
       console.error("게시글 또는 댓글 조회 실패", error);
       navigate("/board");
+    }
+  };
+
+  // ✅ 댓글만 새로고침 (조회수 추가 증가 방지)
+  const refreshCommentsOnly = async () => {
+    try {
+      const { data } = await getCommentsByPostId(postId);
+      setComments(data || []);
+    } catch (e) {
+      console.error("댓글 재조회 실패", e);
     }
   };
 
@@ -104,7 +137,8 @@ export default function PostDetailPage() {
     try {
       await createComment(postId, { content: newComment });
       setNewComment("");
-      fetchPostAndComments(); // 댓글 목록 새로고침
+      // ❗ 기존: fetchPostAndComments();  → 조회수 증가 API 호출 아님이지만 불필요한 전체 리패치
+      await refreshCommentsOnly(); // ✅ 댓글만 갱신
     } catch (error) {
       console.error("댓글 작성 실패", error);
     }
@@ -178,7 +212,7 @@ export default function PostDetailPage() {
           {!isNewPost && (
             <button
               type="button"
-              onClick={handleDeletePost}
+              onClick={() => handleDeletePost()}
               className="btn btn-error"
             >
               삭제
@@ -207,7 +241,6 @@ export default function PostDetailPage() {
                 <p className="text-xs text-gray-500">
                   {new Date(comment.createdAt).toLocaleString()}
                 </p>
-                {/* 현재 유저가 댓글 작성자일 경우 수정/삭제 버튼 표시 */}
               </div>
             ))}
           </div>
