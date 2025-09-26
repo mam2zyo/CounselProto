@@ -10,6 +10,8 @@ import io.notfound.counsel_back.board.repository.PostRepository;
 import io.notfound.counsel_back.user.entity.User;
 import io.notfound.counsel_back.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,12 @@ public class BoardService {
     private final PostRepository postRepository;
     private final AttachmentRepository attachmentRepository;
     private final S3Service s3Service;
+
+    @Transactional(readOnly = true)
+    public Page<PostResponse> getAllPosts(Pageable pageable) {
+        return postRepository.findAll(pageable)
+                .map(PostResponse::from);
+    }
 
     @Transactional
     public PostResponse createPost(PostRequest request, String email) {

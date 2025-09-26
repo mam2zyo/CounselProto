@@ -6,25 +6,36 @@ import { getAllPosts } from "../api/board";
 export default function BoardPage() {
   const { isLoggedIn } = useAuth();
   const [posts, setPosts] = useState([]);
+  const [page, setPage] = useState(0); // 0부터 시작 (Spring과 호환)
+  const [totalPages, setTotalPages] = useState(1);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        const response = await getAllPosts();
-        setPosts(response.data);
-      } catch (error) {
-        console.error("게시글 목록 조회 실패", error);
-        setPosts([]);
-      }
-    };
+  const fetchPosts = async (currentPage) => {
+    try {
+      const response = await getAllPosts(currentPage, 10); // size 10
+      setPosts(response.data.content); // Spring Page 객체의 content
+      setTotalPages(response.data.totalPages);
+    } catch (error) {
+      console.error("게시글 목록 조회 실패", error);
+      setPosts([]);
+    }
+  };
 
+  useEffect(() => {
     if (isLoggedIn) {
-      fetchPosts();
+      fetchPosts(page);
     } else {
       setPosts([]);
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, page]);
+
+  const handlePrev = () => {
+    if (page > 0) setPage(page - 1);
+  };
+
+  const handleNext = () => {
+    if (page < totalPages - 1) setPage(page + 1);
+  };
 
   if (!isLoggedIn) {
     return (
@@ -49,7 +60,7 @@ export default function BoardPage() {
         </div>
       </div>
 
-      {/* 게시글 목록 - 네이버 카페 스타일 리스트 */}
+      {/* 게시글 목록 */}
       <div className="border rounded-lg overflow-hidden shadow-sm">
         {/* 헤더 */}
         <div className="bg-gray-100 flex px-4 py-2 text-sm font-semibold text-gray-600">
@@ -60,7 +71,7 @@ export default function BoardPage() {
           <div className="w-2/12 text-right">상세</div>
         </div>
 
-        {/* 게시글 */}
+        {/* 게시글 목록 */}
         {posts.length > 0 ? (
           posts.map((post) => (
             <div
@@ -70,7 +81,9 @@ export default function BoardPage() {
             >
               <div className="w-5/12 text-gray-800 font-medium">{post.title}</div>
               <div className="w-2/12 text-sm text-gray-600">익명</div>
-              <div className="w-1/12 text-center text-gray-500 text-sm">{post.comments || 0}</div>
+              <div className="w-1/12 text-center text-gray-500 text-sm">
+                {post.comments || 0}
+              </div>
               <div className="w-2/12 text-center text-gray-500 text-sm">
                 {post.createdAt
                   ? new Date(post.createdAt).toLocaleString([], {
@@ -88,6 +101,27 @@ export default function BoardPage() {
         ) : (
           <p className="p-4 text-gray-500">게시글이 없습니다.</p>
         )}
+      </div>
+
+      {/* 페이지네이션 */}
+      <div className="flex justify-center items-center mt-6 gap-4">
+        <button
+          className="btn btn-sm"
+          onClick={handlePrev}
+          disabled={page === 0}
+        >
+          ◀ 이전
+        </button>
+        <span className="text-sm text-gray-700">
+          {page + 1} / {totalPages}
+        </span>
+        <button
+          className="btn btn-sm"
+          onClick={handleNext}
+          disabled={page >= totalPages - 1}
+        >
+          다음 ▶
+        </button>
       </div>
     </div>
   );

@@ -1,9 +1,14 @@
 // src/api/board.js
 import apiClient from "./index";
 
-// 모든 게시글 조회
-export const getAllPosts = async () => {
-  return await apiClient.get("/board");
+// // 모든 게시글 조회
+// export const getAllPosts = async () => {
+//   return await apiClient.get("/board");
+// };
+
+// 수정된 코드 (page와 size를 파라미터로 받도록)
+export const getAllPosts = async (page = 0, size = 10) => {
+  return await apiClient.get(`/board?page=${page}&size=${size}`);
 };
 
 // 특정 게시글 조회
