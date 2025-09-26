@@ -49,8 +49,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup", "/api/auth/refresh").permitAll()
                 .requestMatchers(HttpMethod.GET, "/oauth2/authorization/**", "/login/oauth2/code/**", "/login").permitAll()
+                .requestMatchers(HttpMethod.GET, "/board/**", "/login/oauth2/code/**", "/login").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/conversations/**").permitAll()
+                .requestMatchers("/api/conversations/chat").permitAll()
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated(); // 나머지 모든 요청은 인증 필요
     }
