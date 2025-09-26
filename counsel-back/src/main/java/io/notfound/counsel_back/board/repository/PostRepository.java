@@ -1,6 +1,8 @@
 package io.notfound.counsel_back.board.repository;
 
 import io.notfound.counsel_back.board.entity.Post;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -11,23 +13,36 @@ import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
-    // 최신순 정렬
-    List<Post> findAllByOrderByCreatedAtDesc();
+    /** 제목/내용 대소문자 무시 부분검색 + 페이지네이션 */
+    Page<Post> findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(
+            String title, String content, Pageable pageable
+    );
 
-    // 조회수 정렬
-    List<Post> findAllByOrderByViewsDesc();
-
-    // 댓글 개수 내림차순 정렬
-    List<Post> findAllByOrderByCommentCountDesc();
-
+    /** 상세 조회 시 작성자/첨부까지 한 번에 가져오기 (N+1 방지) */
     @Query("SELECT p FROM Post p JOIN FETCH p.author LEFT JOIN FETCH p.attachments WHERE p.id = :id")
     Optional<Post> findByIdWithAuthorAndAttachments(@Param("id") Long id);
 
-        @Modifying(clearAutomatically = true, flushAutomatically = true)
+    /** 조회수 +1 (원자적 업데이트) */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Post p SET p.views = p.views + 1 WHERE p.id = :postId")
     int incrementViews(@Param("postId") Long postId);
 
-        @Modifying(clearAutomatically = true, flushAutomatically = true)
+    /** 댓글 수 증감 (원자적 업데이트) */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Post p SET p.commentCount = p.commentCount + :delta WHERE p.id = :postId")
     int changeCommentCount(@Param("postId") Long postId, @Param("delta") int delta);
+
+    /* --- (옵션) 필요 시 사용할 수 있는 fetch join 기반 목록/검색 --- */
+
+    /** 모든 게시글을 작성자/첨부와 함께 조회 (필요시 사용) */
+    @Query("SELECT p FROM Post p JOIN FETCH p.author LEFT JOIN FETCH p.attachments")
+    List<Post> findAllWithAuthorAndAttachments();
+
+    /** 키워드로 제목/내용 검색 시 작성자/첨부까지 fetch (필요시 사용) */
+    @Query("SELECT p FROM Post p " +
+            "JOIN FETCH p.author " +
+            "LEFT JOIN FETCH p.attachments " +
+            "WHERE p.title LIKE CONCAT('%', :keyword, '%') " +
+            "   OR p.content LIKE CONCAT('%', :keyword, '%')")
+    List<Post> findByTitleOrContentWithAuthorAndAttachments(@Param("keyword") String keyword);
 }

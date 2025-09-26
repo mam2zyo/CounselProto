@@ -1,9 +1,17 @@
 // src/api/board.js
 import apiClient from "./index";
 
-// 모든 게시글 조회
-export const getAllPosts = async () => {
-  return await apiClient.get("/board");
+// ✅ 모든 게시글 조회 (검색/정렬/페이지 파라미터 지원 + 정렬 방향까지 서버에 전달)
+export const getAllPosts = async ({
+  search = "",
+  sortBy = "latest",    // "latest" | "views" | "comments"
+  direction = "desc",   // "asc" | "desc"  ← 중요!
+  page = 0,
+  size = 10,
+} = {}) => {
+  return await apiClient.get("/board", {
+    params: { search, sortBy, direction, page, size },
+  });
 };
 
 // 특정 게시글 조회 (조회수 증가 없음)
@@ -19,18 +27,14 @@ export const recordView = async (id) => {
 // 게시글 생성 (파일 첨부 때문에 FormData 사용)
 export const createPost = async (formData) => {
   return await apiClient.post("/board", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
+    headers: { "Content-Type": "multipart/form-data" },
   });
 };
 
 // 게시글 수정 (FormData 사용)
 export const updatePost = async (id, formData) => {
   return await apiClient.put(`/board/${id}`, formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
+    headers: { "Content-Type": "multipart/form-data" },
   });
 };
 
@@ -38,11 +42,3 @@ export const updatePost = async (id, formData) => {
 export const deletePost = async (id) => {
   return await apiClient.delete(`/board/${id}`);
 };
-
-// ----- 과거 axiosInstance 버전 (보관용) -----
-// import axiosInstance from "./axiosInstance";
-// export const getAllPosts = () => axiosInstance.get("/board");
-// export const getPost = (id) => axiosInstance.get(`/board/${id}`);
-// export const createPost = (formData) => axiosInstance.post("/board", formData, { headers: { "Content-Type": "multipart/form-data" }});
-// export const updatePost = (id, formData) => axiosInstance.put(`/board/${id}`, formData, { headers: { "Content-Type": "multipart/form-data" }});
-// export const deletePost = (id) => axiosInstance.delete(`/board/${id}`);

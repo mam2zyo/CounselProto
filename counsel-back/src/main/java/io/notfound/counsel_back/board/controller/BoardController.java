@@ -6,13 +6,16 @@ import io.notfound.counsel_back.board.dto.PostUpdateRequest;
 import io.notfound.counsel_back.board.service.BoardService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -54,11 +57,52 @@ public class BoardController {
         return ResponseEntity.ok().build();
     }
 
-    /** 게시글 목록 조회 (latest | views | comments 정렬 지원) */
+    /**
+     * 게시글 목록 조회 (검색 + 페이지네이션 + 정렬)
+     *
+     * - 검색:   /api/board?search=키워드
+     * - 정렬:   /api/board?sortBy=latest|views|comments  (기본: latest)
+     * - 방향:   /api/board?direction=asc|desc           (기본: desc)
+     * - 페이지: page, size (Pageable 기본 파라미터)
+     */
     @GetMapping
-    public ResponseEntity<List<PostResponse>> getAllPosts(
-            @RequestParam(required = false, defaultValue = "latest") String sortBy) {
-        List<PostResponse> responses = boardService.getAllPostsSortedBy(sortBy);
+    public ResponseEntity<Page<PostResponse>> getAllPosts(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "latest") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String direction,   // ✅ 정렬 방향 추가
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        final String key = (sortBy == null) ? "latest" : sortBy.trim().toLowerCase();
+
+        // ✅ 댓글순은 COUNT/필드 기반 정렬 전용 서비스로 위임 (방향 포함)
+        if ("comments".equals(key)) {
+            Page<PostResponse> responses =
+                    boardService.getAllPostsOrderByCommentCount(search, pageable, direction);
+            return ResponseEntity.ok(responses);
+        }
+
+        // ✅ 최신/조회수는 엔티티 필드 정렬
+        String sortProperty;
+        switch (key) {
+            case "views":
+                sortProperty = "views";       // Post 엔티티의 조회수 필드
+                break;
+            case "latest":
+            default:
+                sortProperty = "createdAt";   // 최신순
+                break;
+        }
+
+        Sort.Direction dir = "asc".equalsIgnoreCase(direction)
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+
+        Pageable effectivePageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(dir, sortProperty)
+        );
+
+        Page<PostResponse> responses = boardService.getAllPosts(search, effectivePageable);
         return ResponseEntity.ok(responses);
     }
 
