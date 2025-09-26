@@ -1,25 +1,22 @@
-// src/pages/PostDetailPage.jsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { getPost, deletePost, createPost, updatePost } from "../api/board";
-import { getCommentsByPostId, createComment } from "../api/comment"
+import { getCommentsByPostId, createComment } from "../api/comment";
 
-// 이 페이지는 새 글 작성(/board/new)과 상세 보기/수정(/board/:postId)을 모두 처리합니다.
 export default function PostDetailPage() {
-  const { postId } = useParams(); // URL에서 postId 가져오기. 'new'일 수도 있음
+  const { postId } = useParams();
   const isNewPost = postId === "new";
   const navigate = useNavigate();
-  const { user } = useAuth(); // 현재 로그인된 사용자 정보 (id, userName 등 포함 가정)
+  const { user } = useAuth();
 
-  // Form State
+  const [post, setPost] = useState(null); // 전체 post 객체 (조회수 포함)
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [attachments, setAttachments] = useState([]); // 기존 첨부파일 목록
-  const [newFiles, setNewFiles] = useState([]); // 새로 추가할 파일
-  const [deletedUrls, setDeletedUrls] = useState([]); // 삭제할 첨부파일 URL
+  const [attachments, setAttachments] = useState([]);
+  const [newFiles, setNewFiles] = useState([]);
+  const [deletedUrls, setDeletedUrls] = useState([]);
 
-  // Comment State
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
 
@@ -36,6 +33,8 @@ export default function PostDetailPage() {
         getCommentsByPostId(postId),
       ]);
       const postData = postRes.data;
+      console.log("현재 조회수:", postData.views);
+      setPost(postData); // 전체 객체 저장 (조회수 포함)
       setTitle(postData.title);
       setContent(postData.content);
       setAttachments(postData.attachmentUrls || []);
@@ -94,21 +93,24 @@ export default function PostDetailPage() {
     try {
       await createComment(postId, { content: newComment });
       setNewComment("");
-      fetchPostAndComments(); // 댓글 목록 새로고침
+      fetchPostAndComments(); // 댓글 새로고침
     } catch (error) {
       console.error("댓글 작성 실패", error);
     }
   };
-  
-  // (댓글 수정/삭제 기능은 이 컴포넌트가 너무 커지므로 CommentSection.jsx 등으로 분리하는 것이 좋습니다)
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">
+      <h1 className="text-3xl font-bold mb-4">
         {isNewPost ? "새 글 작성" : "게시글"}
       </h1>
 
-      {/* 게시글 작성/수정 폼 */}
+      {!isNewPost && post && (
+        <p className="text-sm text-gray-500 mb-4">
+          👁️ 조회수: <strong>{post.views}</strong>
+        </p>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4 mb-12">
         <div>
           <label className="label">제목</label>
@@ -131,7 +133,6 @@ export default function PostDetailPage() {
         </div>
         <div>
           <label className="label">첨부파일</label>
-          {/* 기존 파일 목록 */}
           <div className="mb-2">
             {attachments.map((url) => (
               <div key={url} className="flex items-center gap-2">
@@ -144,7 +145,6 @@ export default function PostDetailPage() {
               </div>
             ))}
           </div>
-          {/* 새 파일 선택 */}
           <input
             type="file"
             multiple
@@ -167,11 +167,9 @@ export default function PostDetailPage() {
         </div>
       </form>
 
-      {/* 댓글 섹션 (새 글 작성이 아닐 때만 표시) */}
       {!isNewPost && (
         <div>
           <h2 className="text-2xl font-bold mb-4">댓글</h2>
-          {/* 댓글 목록 */}
           <div className="space-y-3 mb-6">
             {comments.map((comment) => (
               <div key={comment.id} className="p-3 border rounded bg-base-200">
@@ -180,11 +178,9 @@ export default function PostDetailPage() {
                 <p className="text-xs text-gray-500">
                   {new Date(comment.createdAt).toLocaleString()}
                 </p>
-                {/* 현재 유저가 댓글 작성자일 경우 수정/삭제 버튼 표시 */}
               </div>
             ))}
           </div>
-          {/* 댓글 작성 폼 */}
           <form onSubmit={handleCommentSubmit} className="flex gap-2">
             <input
               type="text"
