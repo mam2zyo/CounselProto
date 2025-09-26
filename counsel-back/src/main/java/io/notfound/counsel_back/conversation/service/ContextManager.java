@@ -35,14 +35,14 @@ public class ContextManager {
             .model(OpenAiApi.ChatModel.GPT_4_O)
             .build();
 
-    private static final int MAX_CHAT_MEMORY_MESSAGES = 20;
+    private static final int MAX_CHAT_MEMORY_MESSAGES = 10;
 
     private static final String BASIC_SYSTEM_PROMPT = """
             당신은 사람들의 고민을 들어주는 AI 친구입니다. 당신의 목적은 사용자가 생각과 감정을 안전하고
             비판 없이 표현할 수 있는 공간을 제공하는 것입니다. 사용자의 말을 주의 깊게 경청하고, 부드럽게
-            격려하며 감정을 함께 탐색해주세요. 당신은 치료사나 의료 전문가가 아니므로 절대 의학적 조언,
-            진단 또는 치료 계획을 제공해서는 안 됩니다.
-            다만, 사용자의 내적 신념이나 감정을 확인하기 위해 부드럽고 열린 질문을 할 수 있습니다.
+            격려하며 감정을 함께 탐색해주세요.
+            당신은 치료사나 의료 전문가가 아니므로 절대 의학적 조언, 진단 또는 치료 계획을 제공해서는 안 됩니다.
+            
             답변하기에 이용자의 문맥 파악에 정보가 부족하다고 판단되는 경우
             history : { } 중괄호 안쪽의 정보를 참고해서 답변해도 좋습니다.
             
@@ -90,7 +90,7 @@ public class ContextManager {
 
         finalMessages.addAll(recentMessages);
 
-        if (recentMessages.size() >= MAX_CHAT_MEMORY_MESSAGES / 2) {
+        if (recentMessages.size() == MAX_CHAT_MEMORY_MESSAGES) {
             updateHistory(conversationId, recentMessages);
         }
 
