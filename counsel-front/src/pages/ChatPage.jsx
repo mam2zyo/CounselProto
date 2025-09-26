@@ -30,12 +30,8 @@ function ChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [accessUntil, setAccessUntil] = useState(null);
 
-  const activeConversation = conversations.find(
-    (c) => c.id === activeConversationId
-  );
-  const displayMessages = activeConversationId
-    ? activeConversation?.messages
-    : tempMessages;
+  const activeConversation = conversations.find(c => c.id === activeConversationId);
+  const displayMessages = activeConversationId ? activeConversation?.messages : tempMessages;
 
   // --- 로그인 및 초기 데이터 로드 ---
   useEffect(() => {
@@ -58,48 +54,37 @@ function ChatPage() {
     init();
   }, [isLoggedIn, isLoading, navigate]);
 
-  useEffect(() => {
-    tempMessagesRef.current = tempMessages;
-  }, [tempMessages]);
-  useEffect(() => {
-    if (mainRef.current)
-      mainRef.current.scrollTop = mainRef.current.scrollHeight;
-  }, [displayMessages]);
+  useEffect(() => { tempMessagesRef.current = tempMessages; }, [tempMessages]);
+  useEffect(() => { if (mainRef.current) mainRef.current.scrollTop = mainRef.current.scrollHeight; }, [displayMessages]);
 
   // --- 결제 ---
   const requestPay = () => {
     const { IMP } = window;
     IMP.init("imp04144282");
 
-    IMP.request_pay(
-      {
-        pg: "kakaopay.TC0ONETIME",
-        pay_method: "card",
-        merchant_uid: `mid_${Date.now()}`,
-        name: "한 달 이용권",
-        amount: 100,
-        buyer_email: "test@example.com",
-        buyer_name: "홍길동",
-        buyer_tel: "010-1234-5678",
-      },
-      async (rsp) => {
-        if (!rsp.success) return alert(`결제 실패: ${rsp.error_msg}`);
+    IMP.request_pay({
+      pg: "kakaopay.TC0ONETIME",
+      pay_method: "card",
+      merchant_uid: `mid_${Date.now()}`,
+      name: "한 달 이용권",
+      amount: 100,
+      buyer_email: "test@example.com",
+      buyer_name: "홍길동",
+      buyer_tel: "010-1234-5678",
+    }, async (rsp) => {
+      if (!rsp.success) return alert(`결제 실패: ${rsp.error_msg}`);
 
-        try {
-          await updateAccessStatus({
-            imp_uid: rsp.imp_uid,
-            merchant_uid: rsp.merchant_uid,
-          });
-          const accessResp = await checkAccessStatus();
-          const newAccessUntil = new Date(accessResp.data.accessUntil);
-          setAccessUntil(newAccessUntil);
-          alert("결제 완료! 한 달 이용권이 갱신되었습니다.");
-        } catch (e) {
-          console.error("결제 검증 실패:", e);
-          alert("결제는 성공했지만 이용권 갱신에 실패했습니다.");
-        }
+      try {
+        await updateAccessStatus({ imp_uid: rsp.imp_uid, merchant_uid: rsp.merchant_uid });
+        const accessResp = await checkAccessStatus();
+        const newAccessUntil = new Date(accessResp.data.accessUntil);
+        setAccessUntil(newAccessUntil);
+        alert("결제 완료! 한 달 이용권이 갱신되었습니다.");
+      } catch (e) {
+        console.error("결제 검증 실패:", e);
+        alert("결제는 성공했지만 이용권 갱신에 실패했습니다.");
       }
-    );
+    });
   };
 
   // --- 새 대화 생성 ---
@@ -114,28 +99,15 @@ function ChatPage() {
     setActiveConversationId(id);
     setTempMessages([]);
 
-    const selectedConv = conversations.find((c) => c.id === id);
+    const selectedConv = conversations.find(c => c.id === id);
     if (!selectedConv || !selectedConv.messages) {
       try {
         const resp = await fetchConversationDetail(id);
         const detail = resp.data;
-        setConversations((prev) =>
-          prev.map((c) => (c.id === id ? { ...c, ...detail } : c))
-        );
+        setConversations(prev => prev.map(c => c.id === id ? { ...c, ...detail } : c));
       } catch (e) {
         console.error("대화 상세 정보 로딩 실패:", e);
       }
-    }
-  };
-
-  const handleUpdateConversation = async (id, data) => {
-    try {
-      const res = await updateConversation(id, data);
-      setConversations((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, ...res.data } : c))
-      );
-    } catch (e) {
-      console.error(e);
     }
   };
 
@@ -158,15 +130,8 @@ function ChatPage() {
     const aiMsgId = Date.now() + 1;
     const aiMsg = { id: aiMsgId, message: "...", sender: "ai" };
 
-    if (isNewConv) setTempMessages((prev) => [...prev, userMsg, aiMsg]);
-    else
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === activeConversationId
-            ? { ...c, messages: [...(c.messages || []), userMsg, aiMsg] }
-            : c
-        )
-      );
+    if (isNewConv) setTempMessages(prev => [...prev, userMsg, aiMsg]);
+    else setConversations(prev => prev.map(c => c.id === activeConversationId ? { ...c, messages: [...(c.messages || []), userMsg, aiMsg] } : c));
 
     streamChat(
       activeConversationId,
@@ -175,25 +140,11 @@ function ChatPage() {
         const updater = (messages) => {
           const last = messages[messages.length - 1];
           if (last?.id === aiMsgId) {
-            return [
-              ...messages.slice(0, -1),
-              {
-                ...last,
-                message: last.message === "..." ? token : last.message + token,
-              },
-            ];
+            return [...messages.slice(0, -1), { ...last, message: last.message === "..." ? token : last.message + token }];
           }
           return messages;
         };
-        isNewConv
-          ? setTempMessages(updater)
-          : setConversations((prev) =>
-              prev.map((c) =>
-                c.id === activeConversationId
-                  ? { ...c, messages: updater(c.messages) }
-                  : c
-              )
-            );
+        isNewConv ? setTempMessages(updater) : setConversations(prev => prev.map(c => c.id === activeConversationId ? { ...c, messages: updater(c.messages) } : c));
       },
       () => setIsSending(false),
       async () => {
@@ -201,15 +152,10 @@ function ChatPage() {
         if (!isNewConv) return;
         try {
           const { data: list } = await fetchConversations();
-          setConversations((prev) => [
-            { ...list[0], messages: tempMessagesRef.current },
-            ...prev,
-          ]);
+          setConversations(prev => [{ ...list[0], messages: tempMessagesRef.current }, ...prev]);
           setActiveConversationId(list[0].id);
           setTempMessages([]);
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e) { console.error(e); }
       }
     );
   };
@@ -220,20 +166,16 @@ function ChatPage() {
       <div className="drawer-content flex flex-col h-screen">
         <Navbar />
         <main ref={mainRef} className="flex-1 overflow-y-auto p-4">
-          {!accessUntil || new Date() > accessUntil ? (
+          {(!accessUntil || new Date() > accessUntil) ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
               <p className="text-lg mb-4">한 달 이용권이 필요합니다.</p>
-              <button onClick={requestPay} className="btn btn-primary">
-                결제하기
-              </button>
+              <button onClick={requestPay} className="btn btn-primary">결제하기</button>
             </div>
           ) : displayMessages?.length ? (
-            displayMessages.map((m) => <ChatMessage key={m.id} message={m} />)
+            displayMessages.map(m => <ChatMessage key={m.id} message={m} />)
           ) : (
             <div className="flex items-center justify-center h-screen">
-              <p className="text-gray-400 text-center">
-                새로운 대화를 시작해보세요 ✨
-              </p>
+              <p className="text-gray-400 text-center">새로운 대화를 시작해보세요 ✨</p>
             </div>
           )}
         </main>
@@ -252,15 +194,11 @@ function ChatPage() {
         onSelectConversation={handleSelectConversation}
         onDeleteConversation={async (id) => {
           if (!confirm("삭제하시겠습니까?")) return;
-          try {
-            await deleteConversation(id);
-            setConversations((prev) => prev.filter((c) => c.id !== id));
-            if (activeConversationId === id) setActiveConversationId(null);
-          } catch (e) {
-            console.error(e);
-          }
+          try { await deleteConversation(id); setConversations(prev => prev.filter(c => c.id !== id)); if (activeConversationId === id) setActiveConversationId(null); } catch (e) { console.error(e); }
         }}
-        onUpdateConversation={handleUpdateConversation}
+        onUpdateConversation={async (id, data) => {
+          try { const res = await updateConversation(id, data); setConversations(prev => prev.map(c => c.id === id ? { ...c, title: res.data.title } : c)); } catch (e) { console.error(e); }
+        }}
         editingId={editingConversationId}
         onStartEdit={setEditingConversationId}
         onCancelEdit={() => setEditingConversationId(null)}
