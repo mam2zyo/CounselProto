@@ -9,10 +9,13 @@ import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -23,11 +26,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ContextManager {
 
+    private final OpenAiChatModel openAiChatModel;
     private final ChatMemoryRepository chatMemoryRepository;
     private final ConversationRepository conversationRepository;
     private final OpenAiChatOptions options = OpenAiChatOptions.builder()
-            .model(OpenAiApi.ChatModel.GPT_5_CHAT_LATEST)
+            .model(OpenAiApi.ChatModel.GPT_4_O)
             .build();
+
+    private static final int MAX_CHAT_MEMORY_MESSAGES = 10;
 
     private static final String BASIC_SYSTEM_PROMPT = """
             당신은 사람들의 고민을 들어주는 AI 친구입니다. 당신의 목적은 사용자가 생각과 감정을 안전하고
@@ -46,13 +52,12 @@ public class ContextManager {
             
             당신은 오직 순수 텍스트로만 답변합니다. 마크다운 문법(예: #, *, -, ``` 등)은 사용하지 마세요.
             """;
-
     private static final String TITLE_GEN_PROMPT =
-            "이 대화에 적합한 대화 제목을 6단어 이내로 만들어 줘";
+            "다음 대화에 적합한 대화 제목을 6단어 이내로 만들어 줘: \n";
     private static final String HISTORY_UPDATE_PROMPT =
-            "유저와 네가 나눈 대화를 요약해서 정리해 줘";
-
-    private static final int MAX_CHAT_MEMORY_MESSAGES = 20;
+            "지금까지의 대화를 요약해서 정리해 줘. 요약은 순수 텍스트로만 하고," +
+                    "이모지나 마크다운 문법(예: #, *, -, ``` 등)은 사용하면 안돼." +
+                    "요약은 ";
 
     public ChatMemory getChatMemory() {
         return MessageWindowChatMemory.builder()
@@ -64,30 +69,59 @@ public class ContextManager {
     public Prompt getChatPrompt(String conversationId, ChatMemory chatMemory) {
 
         List<Message> recentMessages = chatMemory.get(conversationId);
-        String history = getHistoryFromConversationId(conversationId);
+        Conversation conversation = getConversationFromConversationId(conversationId);
+        String currentHistory = conversation.getHistory();
         List<Message> finalMessages = new ArrayList<>();
 
         finalMessages.add(new SystemMessage(BASIC_SYSTEM_PROMPT));
 
-        if (StringUtils.hasText(history)) {
-            finalMessages.add(new SystemMessage("이것은 지금까지 진행된 대화의 요약본입니다: " + history));
+        if (StringUtils.hasText(currentHistory)) {
+            finalMessages.add(new SystemMessage(
+                    "이것은 지금까지 진행된 대화의 요약본입니다: " + currentHistory));
         }
 
+        finalMessages.addAll(recentMessages);
 
-        return new Prompt (chatMemory.get(conversationId), options);
+        if (recentMessages.size() >= MAX_CHAT_MEMORY_MESSAGES -2) {
+            updateHistory(conversationId, recentMessages);
+        }
+
+        return new Prompt(finalMessages, options);
     }
 
-    public Prompt getHistoryUpdatePrompt(String conversationId, ChatMemory chatMemory) {
-        return null;
+    public Prompt getTitleGenerationPrompt(String firstChat) {
+        String requestMessage = TITLE_GEN_PROMPT + firstChat;
+        return new Prompt(new SystemMessage(requestMessage), options);
     }
 
-    private String getHistoryFromConversationId(String conversationIdStr) {
+    @Async
+    @Transactional
+    public void updateHistory(String conversationId, List<Message> recentMessages) {
+        performHistoryUpdate(conversationId, recentMessages);
+    }
+
+    private void performHistoryUpdate(String conversationId, List<Message> recentMessages) {
+
+        Conversation conversation = getConversationFromConversationId(conversationId);
+        String historyBefore = conversation.getHistory();
+        List<Message> historyUpdateRequest = new ArrayList<>();
+        historyUpdateRequest.add(new SystemMessage(HISTORY_UPDATE_PROMPT));
+        historyUpdateRequest.addAll(recentMessages);
+
+        Prompt historyPrompt = new Prompt(historyUpdateRequest, options);
+
+        String historyRecent = openAiChatModel.call(historyPrompt).getResult().getOutput().getText();
+
+        String updatedHistory = historyBefore + historyRecent;
+
+        conversation.updateHistory(updatedHistory);
+        conversationRepository.save(conversation);    }
+
+    private Conversation getConversationFromConversationId(String conversationIdStr) {
         Long conversationId = Long.parseLong(conversationIdStr);
 
-        Conversation conversation = conversationRepository.findById(conversationId)
+        return conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "대화를 찾을 수 없습니다: " + conversationId));
-
-        return conversation.getHistory();
     }
 }
