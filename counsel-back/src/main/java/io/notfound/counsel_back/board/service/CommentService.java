@@ -27,11 +27,12 @@ public class CommentService {
     private final UserRepository userRepository;
 
     @Transactional
+    // [수정] email 파라미터 추가
     public CommentResponse createComment(Long postId, CommentRequest request, String email) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new NoSuchElementException("Post not found with id: " + postId));
 
-        // 이메일로 작성자 찾기
+        // [수정] 인증된 사용자 정보로 작성자 설정
         User writer = userRepository.findByEmail(email)
                 .orElseThrow(() -> new NoSuchElementException("User not found with email: " + email));
 
@@ -41,13 +42,12 @@ public class CommentService {
                 .post(post)
                 .build();
 
-        post.addComment(comment); // 댓글을 게시글에 추가
+        post.addComment(comment);
 
         Comment savedComment = commentRepository.save(comment);
 
-        return CommentResponse.from(savedComment); // 정적 팩토리 메서드를 통해 CommentResponse 반환
+        return CommentResponse.from(savedComment); // 정적 팩토리 메서드 사용
     }
-
 
     // 특정 게시글의 모든 댓글 조회
     @Transactional(readOnly = true)

@@ -24,7 +24,7 @@ public class PostResponse {
         response.content = post.getContent();
         response.attachmentUrls = post.getAttachments().stream()
                 .map(Attachment::getFileUrl)
-                .toList();
+                .collect(Collectors.toList());
         response.createdAt = post.getCreatedAt() != null ? post.getCreatedAt().toString() : null;
         return response;
     }
