@@ -1,8 +1,24 @@
 package io.notfound.counsel_back.conversation.service;
 
+import io.notfound.counsel_back.conversation.entity.Conversation;
+import io.notfound.counsel_back.conversation.repository.ConversationRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+@RequiredArgsConstructor
 public class PromptManager {
 
-    public static final String BASIC_SYSTEM_PROMPT = """
+    private final ConversationRepository conversationRepository;
+
+    private static final String BASIC_SYSTEM_PROMPT = """
             당신은 사람들의 고민을 들어주는 AI 친구입니다. 당신의 목적은 사용자가 생각과 감정을 안전하고 비판 없이 표현할 수 있는 공간을 제공하는 것입니다.
             사용자의 말을 주의 깊게 경청하고, 부드럽게 격려하며 감정을 함께 탐색해주세요.
             당신은 치료사나 의료 전문가가 아니므로 절대 의학적 조언, 진단 또는 치료 계획을 제공해서는 안 됩니다. 다만, 사용자의 내적 신념이나 감정을 확인하기 위해 부드럽고 열린 질문을 할 수 있습니다.
@@ -13,9 +29,37 @@ public class PromptManager {
             
             당신은 오직 순수 텍스트로만 답변합니다. 마크다운 문법(예: #, *, -, ``` 등)은 절대 사용하지 마세요.            
             """;
-    public static final String TITLE_GEN_PROMPT = "이 대화에 적합한 대화 제목을 6단어 이내로 만들어 줘";
+    private static final String TITLE_GEN_PROMPT = "이 대화에 적합한 대화 제목을 6단어 이내로 만들어 줘";
 
-    public static final String HISTORY_GEN_PROMPT = "유저와 네가 나눈 대화를 요약해서 정리해 줘";
+    private static final String HISTORY_UPDATE_PROMPT = "유저와 네가 나눈 대화를 요약해서 정리해 줘";
+
+    OpenAiChatOptions options = OpenAiChatOptions.builder()
+            .model(OpenAiApi.ChatModel.GPT_5_CHAT_LATEST)
+            .build();
+
+    public Prompt getFirstChatPrompt(String conversationId, ChatMemory chatMemory) {
+        chatMemory.add(conversationId, new SystemMessage(BASIC_SYSTEM_PROMPT));
+        return new Prompt (chatMemory.get(conversationId), options);
+    }
+
+    public Prompt getGeneralChatPrompt(String conversationId, ChatMemory chatMemory) {
+        return new Prompt (chatMemory.get(conversationId), options);
+    }
+
+    public Prompt getHistoryUpdatePrompt(String conversationId, ChatMemory chatMemory) {
+
+
+    }
+
+    private String getHistoryFromConversationId(String conversationIdStr) {
+        Long conversationId = Long.parseLong(conversationIdStr);
+
+        Conversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "대화를 찾을 수 없습니다: " + conversationId));
+
+        return conversation.getHistory();
+    }
 
 
 

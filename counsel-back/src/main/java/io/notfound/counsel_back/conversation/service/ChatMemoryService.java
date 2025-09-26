@@ -16,21 +16,12 @@ public class ChatMemoryService {
     private final ChatMemoryRepository chatMemoryRepository;
     private static final int MAX_CHAT_MEMORY_MESSAGES = 20;
 
-    // ChatMemory 로직
-//        String conversationIdStr = conversation.getId().toString();
-//        ChatMemory chatMemory = MessageWindowChatMemory.builder()
-//                .maxMessages(MAX_CHAT_MEMORY_MESSAGES)
-//                .chatMemoryRepository(chatMemoryRepository)
-//                .build();
-//        chatMemory.add(conversationIdStr, new UserMessage(messageText));
-
     public ChatMemory getChatMemory() {
         return MessageWindowChatMemory.builder()
                 .maxMessages(MAX_CHAT_MEMORY_MESSAGES)
                 .chatMemoryRepository(chatMemoryRepository)
                 .build();
     }
-
 
     public void addUserMessage(ChatMemory chatMemory, String conversationId, String message) {
         chatMemory.add(conversationId, new UserMessage(message));

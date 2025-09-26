@@ -9,6 +9,7 @@ import io.notfound.counsel_back.user.entity.User;
 import io.notfound.counsel_back.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -21,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -35,7 +37,6 @@ public class ChatService {
     private final ConversationRepository conversationRepository;
     private final UserRepository userRepository;
 
-
     private static final int MAX_CHAT_MEMORY_MESSAGES = 20;
 
     public Flux<String> completeChat(ChatRequest request, String email) {
@@ -46,8 +47,10 @@ public class ChatService {
         Conversation conversation = getOrGenerateConversation(request, email);
         saveUserMessageToDatabase(messageText, conversation);
 
+        String conversationIdStr = conversation.getId().toString();
+
         ChatMemory chatMemory = chatMemoryService.getChatMemory();
-        chatMemoryService.addUserMessage(chatMemory, conversation.getId().toString(), messageText);
+        chatMemoryService.addUserMessage(chatMemory, conversationIdStr, messageText);
 
 
         // 프롬프트 및 스트리밍 로직 (기존과 거의 동일)
@@ -55,6 +58,15 @@ public class ChatService {
 //                .model(OpenAiApi.ChatModel.GPT_4_1_NANO)
 //                .build();
 //        Prompt prompt = new Prompt(chatMemory.get(conversationIdStr), options);
+
+        Prompt prompt;
+        List<Message> messages = chatMemory.get(conversationIdStr);
+
+        if (messages.size() % MAX_CHAT_MEMORY_MESSAGES == 1) {
+            prompt = promptManager.getFirstChatPrompt(conversationIdStr, chatMemory);
+        } else if (messages.size() % MAX_CHAT_MEMORY_MESSAGES == 0){
+            prompt = promptManager.getGeneralChatPrompt(conversationIdStr, chatMemory);
+        }
 
         Flux<String> sharedStream = openAiChatModel.stream(prompt)
                 .flatMap(response -> {
