@@ -22,22 +22,20 @@ import java.util.NoSuchElementException;
 public class CommentService {
 
     private final CommentRepository commentRepository;
-    private final PostRepository postRepository; // 게시글 존재 여부 확인용
+    private final PostRepository postRepository;
     private final UserRepository userRepository;
-    private final BoardService boardService;     // ✅ 댓글 수 증감(원자 연산) 사용
+    private final BoardService boardService;
 
     @Transactional
-    // [수정] email 파라미터 추가 유지
     public CommentResponse createComment(Long postId, CommentRequest request, String email) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new NoSuchElementException("Post not found with id: " + postId));
 
-        // 인증된 사용자 정보로 작성자 설정
         // 이메일로 작성자 찾기
         User writer = userRepository.findByEmail(email)
                 .orElseThrow(() -> new NoSuchElementException("User not found with email: " + email));
 
-        // ✅ 컬렉션 편의 메서드(post.addComment) 대신 직접 연관만 세팅 (중복 카운트 방지)
+        // 컬렉션 편의 메서드(post.addComment) 대신 직접 연관만 세팅 (중복 카운트 방지)
         Comment comment = Comment.builder()
                 .content(request.getContent())
                 .writer(writer)
@@ -46,7 +44,7 @@ public class CommentService {
 
         Comment savedComment = commentRepository.save(comment);
 
-        // ✅ DB에서 commentCount = commentCount + 1 (경합에 안전)
+        // DB에서 commentCount = commentCount + 1 (경합에 안전)
         boardService.increaseCommentCount(post.getId());
 
         return CommentResponse.from(savedComment);
@@ -91,10 +89,10 @@ public class CommentService {
 
         Long postId = comment.getPost() != null ? comment.getPost().getId() : null;
 
-        // ✅ 먼저 삭제
+        // 먼저 삭제
         commentRepository.delete(comment);
 
-        // ✅ 그 다음 DB에서 commentCount - 1 (post가 있을 때만)
+        // 그 다음 DB에서 commentCount - 1 (post가 있을 때만)
         if (postId != null) {
             boardService.decreaseCommentCount(postId);
         }

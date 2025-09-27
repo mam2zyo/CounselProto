@@ -10,14 +10,14 @@ export default function BoardPage() {
 
   // 목록/페이지/검색 상태
   const [posts, setPosts] = useState([]);
-  const [page, setPage] = useState(0);      // 0-based
+  const [page, setPage] = useState(0); // 0-based
   const [size] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [keyword, setKeyword] = useState("");
 
   // 정렬 상태
   const [sortBy, setSortBy] = useState("latest"); // latest | views | comments
-  const [order, setOrder] = useState("desc");     // desc | asc (서버가 처리)
+  const [order, setOrder] = useState("desc"); // desc | asc (서버가 처리)
 
   // 로딩/에러
   const [loading, setLoading] = useState(false);
@@ -28,7 +28,10 @@ export default function BoardPage() {
     const maxButtons = 7;
     const pages = totalPages || 1;
     const current = page; // 0-based
-    const start = Math.max(0, Math.min(current - Math.floor(maxButtons / 2), pages - maxButtons));
+    const start = Math.max(
+      0,
+      Math.min(current - Math.floor(maxButtons / 2), pages - maxButtons)
+    );
     const end = Math.min(pages - 1, start + maxButtons - 1);
     return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   }, [page, totalPages]);
@@ -48,13 +51,13 @@ export default function BoardPage() {
         const { data } = await getAllPosts({
           search: keyword.trim(),
           sortBy,
-          direction: order,   // ✅ 정렬 방향 서버로 전달
-          page,               // ✅ 페이지 전달
-          size,               // ✅ 페이지 사이즈 전달
+          direction: order, // 정렬 방향 서버로 전달
+          page,
+          size,
         });
 
         const list = Array.isArray(data?.content) ? data.content : [];
-        setPosts(list);                           // ✅ 프론트에서 reverse() 금지
+        setPosts(list); // 프론트에서 reverse() 금지
         setTotalPages(data?.totalPages ?? 1);
       } catch (e) {
         console.error("게시글 목록 조회 실패", e);
@@ -95,7 +98,8 @@ export default function BoardPage() {
     }
     setPage(0); // 정렬 바꾸면 첫 페이지로
   };
-  const arrow = (key) => (sortBy === key ? (order === "desc" ? " ▼" : " ▲") : "");
+  const arrow = (key) =>
+    sortBy === key ? (order === "desc" ? " ▼" : " ▲") : "";
 
   // 페이지 이동
   const goToPage = (idx) => {
@@ -107,7 +111,9 @@ export default function BoardPage() {
 
   // 검색
   const handleSearch = () => setPage(0);
-  const handleKeyDown = (e) => { if (e.key === "Enter") handleSearch(); };
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") handleSearch();
+  };
 
   if (!isLoggedIn) {
     return (
@@ -123,8 +129,12 @@ export default function BoardPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">익명 게시판</h1>
         <div className="flex gap-2">
-          <Link to="/board/new" className="btn btn-ghost">새 글 작성</Link>
-          <button className="btn btn-ghost" onClick={() => navigate("/")}>메인 화면</button>
+          <Link to="/board/new" className="btn btn-ghost">
+            새 글 작성
+          </Link>
+          <button className="btn btn-ghost" onClick={() => navigate("/")}>
+            메인 화면
+          </button>
         </div>
       </div>
 
@@ -133,46 +143,58 @@ export default function BoardPage() {
         <span className="text-sm text-gray-600">
           현재 정렬:&nbsp;
           {sortBy === "latest"
-            ? (order === "desc" ? "최신순" : "오래된순")
+            ? order === "desc"
+              ? "최신순"
+              : "오래된순"
             : sortBy === "views"
-              ? (order === "desc" ? "조회순" : "조회순")
-              : (order === "desc" ? "댓글순" : "댓글순")}
+            ? order === "desc"
+              ? "조회순"
+              : "조회순"
+            : order === "desc"
+            ? "댓글순"
+            : "댓글순"}
         </span>
 
         <button
           onClick={() => handleSortClick("latest")}
-          className={`px-3 py-1 border rounded ${sortBy === "latest" ? "font-semibold bg-gray-100" : ""}`}
+          className={`px-3 py-1 border rounded ${
+            sortBy === "latest" ? "font-semibold bg-gray-100" : ""
+          }`}
         >
           최신순{arrow("latest")}
         </button>
 
         <button
           onClick={() => handleSortClick("views")}
-          className={`px-3 py-1 border rounded ${sortBy === "views" ? "font-semibold bg-gray-100" : ""}`}
+          className={`px-3 py-1 border rounded ${
+            sortBy === "views" ? "font-semibold bg-gray-100" : ""
+          }`}
         >
           조회순{arrow("views")}
         </button>
 
         <button
           onClick={() => handleSortClick("comments")}
-          className={`px-3 py-1 border rounded ${sortBy === "comments" ? "font-semibold bg-gray-100" : ""}`}
+          className={`px-3 py-1 border rounded ${
+            sortBy === "comments" ? "font-semibold bg-gray-100" : ""
+          }`}
         >
           댓글순{arrow("comments")}
         </button>
 
-        {loading && <span className="text-sm text-gray-500 ml-2">불러오는 중…</span>}
+        {loading && (
+          <span className="text-sm text-gray-500 ml-2">불러오는 중…</span>
+        )}
         {err && <span className="text-sm text-red-600 ml-2">에러: {err}</span>}
       </div>
 
       {/* 목록 헤더 */}
       <div className="border rounded-lg overflow-hidden shadow-sm">
         <div className="bg-gray-100 flex px-4 py-2 text-sm font-semibold text-gray-600">
-          <div className="w-5/12">제목</div>
-          <div className="w-2/12 text-center">작성자</div>
+          <div className="w-9/12 md:w-6/12 text-center">제목</div>
+          <div className="w-2/12 text-center">댓글</div>
           <div className="w-1/12 text-center">조회수</div>
-          <div className="w-1/12 text-center">댓글</div>
-          <div className="w-2/12 text-center">작성일/시간</div>
-          <div className="w-1/12 text-right">상세</div>
+          <div className="hidden md:block w-3/12 text-center">작성일/시간</div>
         </div>
 
         {/* 목록 */}
@@ -181,19 +203,18 @@ export default function BoardPage() {
             <div
               key={post.postId ?? post.id}
               className="flex px-4 py-3 items-center border-b hover:bg-gray-50 cursor-pointer transition"
-              onClick={() => navigate(`/board/${post.postId ?? post.id}`)}
+              onClick={() => navigate(`/board/${post.postId}`)}
             >
-              <div className="w-5/12 text-gray-800 font-medium truncate">{post.title}</div>
-              <div className="w-2/12 text-sm text-gray-600 text-center truncate">
-                {post.writerName ?? post.authorName ?? "익명"}
-              </div>
-              <div className="w-1/12 text-center text-gray-500 text-sm">
-                {post.views ?? post.viewCount ?? 0}
-              </div>
-              <div className="w-1/12 text-center text-gray-500 text-sm">
-                {post.comments ?? post.commentCount ?? 0}
+              <div className="w-9/12 md:w-6/12 px-2 text-gray-800 font-medium truncate">
+                {post.title}
               </div>
               <div className="w-2/12 text-center text-gray-500 text-sm">
+                {post.commentCount ?? 0}
+              </div>
+              <div className="w-1/12 text-center text-gray-500 text-sm">
+                {post.viewCount ?? 0}
+              </div>
+              <div className="hidden md:block w-3/12 text-center text-gray-500 text-sm">
                 {post.createdAt
                   ? new Date(post.createdAt).toLocaleString([], {
                       year: "numeric",
@@ -204,17 +225,22 @@ export default function BoardPage() {
                     })
                   : "-"}
               </div>
-              <div className="w-1/12 text-right text-gray-400 text-xs">자세히 보기 →</div>
             </div>
           ))
         ) : (
-          <div className="p-4 text-gray-500">{loading ? "불러오는 중…" : "게시글이 없습니다."}</div>
+          <div className="p-4 text-gray-500">
+            {loading ? "불러오는 중…" : "게시글이 없습니다."}
+          </div>
         )}
       </div>
 
       {/* 페이지네이션 */}
       <div className="flex justify-center items-center mt-6 gap-2 flex-wrap">
-        <button className="btn btn-sm" onClick={handlePrev} disabled={page === 0}>
+        <button
+          className="btn btn-sm"
+          onClick={handlePrev}
+          disabled={page === 0}
+        >
           ◀ 이전
         </button>
 
@@ -228,7 +254,11 @@ export default function BoardPage() {
           </button>
         ))}
 
-        <button className="btn btn-sm" onClick={handleNext} disabled={page >= totalPages - 1}>
+        <button
+          className="btn btn-sm"
+          onClick={handleNext}
+          disabled={page >= totalPages - 1}
+        >
           다음 ▶
         </button>
 

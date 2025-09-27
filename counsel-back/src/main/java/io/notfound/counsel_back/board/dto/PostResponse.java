@@ -12,7 +12,6 @@ import java.util.List;
 @Builder
 public class PostResponse {
 
-    private Long id;
     private Long postId;
     private String title;
     private String content;             // 상세 조회 시 포함
@@ -22,12 +21,8 @@ public class PostResponse {
     private String createdAt;           // 문자열로 내려줌
 
     public static PostResponse from(Post post) {
-        String writer = (post.getAuthor() != null && post.getAuthor().getUserName() != null)
-                ? post.getAuthor().getUserName()
-                : "익명";
 
         return PostResponse.builder()
-                .id(post.getId())
                 .postId(post.getId())
                 .title(post.getTitle())
                 .content(post.getContent())

@@ -54,7 +54,6 @@ public class Post {
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
         }
-        // primitives 는 기본 0이지만, 명시적으로 초기화해 두면 안전
         this.views = (this.views < 0) ? 0 : this.views;
         this.commentCount = (this.commentCount < 0) ? 0 : this.commentCount;
     }

@@ -12,12 +12,11 @@ import io.notfound.counsel_back.common.exception.PostNotFoundException;
 import io.notfound.counsel_back.common.exception.UnauthorizedActionException;
 import io.notfound.counsel_back.user.entity.User;
 import io.notfound.counsel_back.user.repository.UserRepository;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.PageRequest;   // ✅ 추가
-import org.springframework.data.domain.Sort;        // ✅ 추가
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -90,7 +89,7 @@ public class BoardService {
         return posts.map(PostResponse::from);
     }
 
-    /** ✅ 댓글순 정렬 전용: commentCount 기준 + 정렬 방향(direction) 반영 */
+    /** 댓글순 정렬 전용: commentCount 기준 + 정렬 방향(direction) 반영 */
     @Transactional(readOnly = true)
     public Page<PostResponse> getAllPostsOrderByCommentCount(String search, Pageable pageable, String direction) {
         Sort.Direction dir = "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
@@ -130,7 +129,7 @@ public class BoardService {
         if (request.getDeletedAttachmentUrls() != null) {
             List<Attachment> attachmentsToDelete = post.getAttachments().stream()
                     .filter(att -> request.getDeletedAttachmentUrls().contains(att.getFileUrl()))
-                    .collect(Collectors.toList());
+                    .toList();
 
             for (Attachment attachment : attachmentsToDelete) {
                 try {
@@ -154,7 +153,6 @@ public class BoardService {
                 post.addAttachment(attachment);
             }
         }
-
         // dirty checking 으로 업데이트 반영
         return PostResponse.from(post);
     }
@@ -210,18 +208,18 @@ public class BoardService {
     }
 
     // ====== 유니크 조회수 기록 ======
-    // "로그인 사용자만" 카운트 (비로그인은 무시)
+    // 로그인 사용자만 카운트 (비로그인은 무시)
     @Transactional
-    public void recordUniqueView(Long postId, String emailOrNull, HttpServletRequest httpRequest) {
-        if (emailOrNull == null || emailOrNull.isBlank()) {
-            return; // 비로그인: no-op
+    public void recordUniqueView(Long postId, String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("이메일 값이 비어있습니다.");
         }
 
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new PostNotFoundException("해당 게시글이 존재하지 않습니다."));
 
-        User viewer = userRepository.findByEmail(emailOrNull)
-                .orElseThrow(() -> new PostNotFoundException("사용자를 찾을 수 없습니다: " + emailOrNull));
+        User viewer = userRepository.findByEmail(email)
+                .orElseThrow(() -> new PostNotFoundException("사용자를 찾을 수 없습니다: " + email));
 
         // 이미 본 사용자면 증가하지 않음
         boolean seen = postViewRepository.existsByPostIdAndViewerUser_Id(postId, viewer.getId());

@@ -19,7 +19,7 @@ export const getPost = async (id) => {
   return await apiClient.get(`/board/${id}`);
 };
 
-// ✅ 유니크 조회수 1회 기록 (백엔드: POST /api/board/{id}/view)
+// 유니크 조회수 1회 기록 (백엔드: POST /api/board/{id}/view)
 export const recordView = async (id) => {
   return await apiClient.post(`/board/${id}/view`);
 };

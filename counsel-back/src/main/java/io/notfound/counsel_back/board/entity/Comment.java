@@ -24,11 +24,11 @@ public class Comment {
     @JoinColumn(name = "writer_id")
     private User writer;
 
-    private LocalDateTime createdAt;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "post_id")
     private Post post;
+
+    private LocalDateTime createdAt;
 
     // Setter를 외부에서 직접 호출하지 못하도록 package-private으로 변경
     // 연관관계 편의 메서드를 통해서만 post가 설정되도록 유도

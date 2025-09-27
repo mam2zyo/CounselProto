@@ -4,7 +4,6 @@ import io.notfound.counsel_back.board.dto.PostRequest;
 import io.notfound.counsel_back.board.dto.PostResponse;
 import io.notfound.counsel_back.board.dto.PostUpdateRequest;
 import io.notfound.counsel_back.board.service.BoardService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -49,11 +48,11 @@ public class BoardController {
     @PostMapping("/{id}/view")
     public ResponseEntity<Void> recordUniqueView(
             @PathVariable Long id,
-            @AuthenticationPrincipal UserDetails userDetails,
-            HttpServletRequest httpRequest) {
+            @AuthenticationPrincipal UserDetails userDetails
+            ) {
 
         final String email = (userDetails != null) ? userDetails.getUsername() : null;
-        boardService.recordUniqueView(id, email, httpRequest);
+        boardService.recordUniqueView(id, email);
         return ResponseEntity.ok().build();
     }
 
