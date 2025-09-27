@@ -22,22 +22,27 @@ export default function PostDetailPage() {
   const [newFiles, setNewFiles] = useState([]);
   const [deletedUrls, setDeletedUrls] = useState([]);
 
-  // React 18 StrictMode에서 중복 fetch를 방지하기 위한 Ref
-  const fetchGuard = useRef(false);
+  // StrictMode 중복 호출 방지를 위해, fetch가 시작된 postId를 기록하는 Ref
+  const initiatedFetchPostId = useRef(null);
 
   // 게시글 데이터 조회와 조회수 기록을 하나의 useEffect로 처리
   useEffect(() => {
-    // 새 글 작성이거나, 이미 fetch가 실행되었다면 중단 (StrictMode 대응)
-    if (isNewPost || fetchGuard.current) {
+    if (isNewPost) {
       return;
     }
-    fetchGuard.current = true;
+
+    // 현재 postId에 대한 API 호출이 이미 "시작"되었다면 중복 실행을 방지합니다.
+    if (initiatedFetchPostId.current === postId) {
+      return;
+    }
+
+    initiatedFetchPostId.current = postId;
 
     const fetchPostAndRecordView = async () => {
       try {
         // 1. 게시글 데이터 가져오기
-        const res = await getPost(postId);
-        const postData = res.data;
+        const response = await getPost(postId);
+        const postData = response.data;
         setTitle(postData.title);
         setContent(postData.content);
         setAttachments(postData.attachmentUrls || []);
@@ -53,12 +58,6 @@ export default function PostDetailPage() {
     };
 
     fetchPostAndRecordView();
-
-    // 컴포넌트가 unmount될 때 guard를 초기화하여
-    // 다음에 다른 게시물로 이동했을 때 fetch가 정상 실행되도록 함
-    return () => {
-      fetchGuard.current = false;
-    };
   }, [postId, isNewPost, navigate]);
 
   const handleFileChange = (e) => {
