@@ -48,31 +48,6 @@ public class ChatService {
 
         Prompt prompt = contextManager.getChatPrompt(conversationIdStr, chatMemory);
 
-//        return openAiChatModel.stream(prompt)
-//                .flatMap(response -> Mono.justOrEmpty(response.getResult().getOutput().getText()))
-//                .collectList() // 모든 토큰을 리스트로 수집 (스트림이 끝날 때까지 대기)
-//                .flatMapMany(tokens -> {
-//                    // 수집된 토큰을 하나의 문자열로 결합
-//                    String fullAiResponse = String.join("", tokens);
-//
-//                    // DB 저장 및 제목 생성 로직을 Mono<Void>로 캡슐화
-//                    Mono<Void> dbOperations = Mono.fromRunnable(() -> {
-//                                if (!fullAiResponse.isEmpty()) {
-//                                    saveAiMessageToDatabase(fullAiResponse, conversation);
-//                                    if (isNewConversation) {
-//                                        String firstChat = "user: " + messageText + "ai: " + fullAiResponse;
-//                                        generateAndSetConversationTitle(conversation.getId(), firstChat);
-//                                    }
-//                                }
-//                            }).doOnError(e -> System.err.println("DB 저장 또는 제목 생성 중 오류 발생: " + e.getMessage()))
-//                            .subscribeOn(Schedulers.boundedElastic()); // I/O 작업에 적합한 스레드에서 실행
-//
-//                    // 토큰을 다시 스트림으로 변환하여 반환하고,
-//                    // 스트림의 끝에 DB 작업이 실행되도록 보장
-//                    return Flux.fromIterable(tokens)
-//                            .concatWith(dbOperations.then(Mono.empty()));
-//                });
-
         Flux<String> sharedStream = openAiChatModel.stream(prompt)
                 .flatMap(response -> {
                     String token = response.getResult().getOutput().getText();
@@ -122,6 +97,7 @@ public class ChatService {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "이 대화에 접근할 권한이 없습니다.");
             }
         }
+        conversation.getChatMessages().size();
         return conversation;
     }
 

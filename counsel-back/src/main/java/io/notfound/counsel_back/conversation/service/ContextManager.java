@@ -17,12 +17,14 @@ import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -39,12 +41,11 @@ public class ContextManager {
 
     private static final String BASIC_SYSTEM_PROMPT = """
             당신은 사람들의 고민을 들어주는 AI 친구입니다. 당신의 목적은 사용자가 생각과 감정을 안전하고
-            비판 없이 표현할 수 있는 공간을 제공하는 것입니다. 사용자의 말을 주의 깊게 경청하고, 부드럽게
-            격려하며 감정을 함께 탐색해주세요.
+            비판 없이 표현할 수 있는 공간을 제공하는 것입니다.
             당신은 치료사나 의료 전문가가 아니므로 절대 의학적 조언, 진단 또는 치료 계획을 제공해서는 안 됩니다.
             
             답변하기에 이용자의 문맥 파악에 정보가 부족하다고 판단되는 경우
-            history : { } 중괄호 안쪽의 정보를 참고해서 답변해도 좋습니다.
+            history : { } 중괄호 안쪽의 정보를 참고해주세요.
             
             만약 사용자가 자해 의도, 타인에 대한 해를 가하겠다는 표현,
             또는 즉각적인 위기 상황(생명·안전 위협)을 명시적으로 표현하면,
@@ -90,8 +91,9 @@ public class ContextManager {
 
         finalMessages.addAll(recentMessages);
 
-        if (recentMessages.size() == MAX_CHAT_MEMORY_MESSAGES) {
-            updateHistory(conversationId, recentMessages);
+        if (recentMessages.size() >= MAX_CHAT_MEMORY_MESSAGES) {
+            updateHistoryAsync(conversationId, recentMessages);
+            chatMemory.clear(conversationId);
         }
 
         return new Prompt(finalMessages, options);
@@ -103,17 +105,21 @@ public class ContextManager {
     }
 
     @Async
-    @Transactional
-    public void updateHistory(String conversationId, List<Message> recentMessages) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public CompletableFuture<Void> updateHistoryAsync(String conversationId, List<Message> recentMessages) {
         performHistoryUpdate(conversationId, recentMessages);
+        return CompletableFuture.completedFuture(null);
     }
 
     private void performHistoryUpdate(String conversationId, List<Message> recentMessages) {
+        // history 업데이트만 필요하므로 chatMessages 없이 조회
+        Conversation conversation = conversationRepository.findByIdWithoutChatMessages(
+                        Long.parseLong(conversationId))
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "대화를 찾을 수 없습니다: " + conversationId));
 
-        Conversation conversation = getConversationFromConversationId(conversationId);
-        String historyBefore = conversation.getHistory();
+        String historyBefore = conversation.getHistory() != null ? conversation.getHistory() : "";
 
-        // 메시지를 구분 가능한 형태로 변환
         StringBuilder conversationText = new StringBuilder();
         for (Message message : recentMessages) {
             if (message instanceof UserMessage) {
@@ -123,7 +129,6 @@ public class ContextManager {
             }
         }
 
-        // 히스토리 업데이트 요청 구성
         String requestContent = HISTORY_UPDATE_PROMPT + "\n\n대화 내용:\n" + conversationText.toString();
         List<Message> historyUpdateRequest = List.of(new SystemMessage(requestContent));
 
@@ -131,10 +136,45 @@ public class ContextManager {
         String historyRecent = openAiChatModel.call(historyPrompt).getResult().getOutput().getText();
 
         String updatedHistory = historyBefore + "\n" + historyRecent;
-
         conversation.updateHistory(updatedHistory);
+
+        // 명시적으로 저장 (merge 대신 save 사용)
         conversationRepository.save(conversation);
     }
+
+//    @Async
+//    @Transactional
+//    public void updateHistory(String conversationId, List<Message> recentMessages) {
+//        performHistoryUpdate(conversationId, recentMessages);
+//    }
+
+//    private void performHistoryUpdate(String conversationId, List<Message> recentMessages) {
+//
+//        Conversation conversation = getConversationFromConversationId(conversationId);
+//        String historyBefore = conversation.getHistory();
+//
+//        // 메시지를 구분 가능한 형태로 변환
+//        StringBuilder conversationText = new StringBuilder();
+//        for (Message message : recentMessages) {
+//            if (message instanceof UserMessage) {
+//                conversationText.append("user: ").append(message.getText()).append("\n");
+//            } else if (message instanceof AssistantMessage) {
+//                conversationText.append("ai: ").append(message.getText()).append("\n");
+//            }
+//        }
+//
+//        // 히스토리 업데이트 요청 구성
+//        String requestContent = HISTORY_UPDATE_PROMPT + "\n\n대화 내용:\n" + conversationText.toString();
+//        List<Message> historyUpdateRequest = List.of(new SystemMessage(requestContent));
+//
+//        Prompt historyPrompt = new Prompt(historyUpdateRequest, options);
+//        String historyRecent = openAiChatModel.call(historyPrompt).getResult().getOutput().getText();
+//
+//        String updatedHistory = historyBefore + "\n" + historyRecent;
+//
+//        conversation.updateHistory(updatedHistory);
+//        conversationRepository.save(conversation);
+//    }
 
     private Conversation getConversationFromConversationId(String conversationIdStr) {
         Long conversationId = Long.parseLong(conversationIdStr);
