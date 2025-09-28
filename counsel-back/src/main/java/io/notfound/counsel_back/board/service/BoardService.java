@@ -30,7 +30,6 @@ public class BoardService {
 
     @Transactional
     public PostResponse createPost(PostRequest request, String email) {
-
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다: " + email));
 
@@ -42,8 +41,7 @@ public class BoardService {
 
         final Post savedPost = postRepository.save(post);
 
-        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
-
+        if (request.getAttachments() != null) {
             for (MultipartFile file : request.getAttachments()) {
                 String fileUrl = s3Service.uploadFile(file); // 파일 S3 업로드
                 Attachment attachment = Attachment.builder()
@@ -51,24 +49,26 @@ public class BoardService {
                         .fileUrl(fileUrl)
                         .post(savedPost)
                         .build();
-
                 attachmentRepository.save(attachment);
-//                savedPost.getAttachments().add(attachment);
+                savedPost.getAttachments().add(attachment);
             }
         }
-        return  PostResponse.from(savedPost);
+        return PostResponse.from(savedPost);
     }
 
     @Transactional(readOnly = true)
     public PostResponse getPost(Long id) {
-        Post post = postRepository.findById(id)
+        // [수정] Fetch Join 메서드 사용
+        Post post = postRepository.findByIdWithAuthorAndAttachments(id)
                 .orElseThrow(() -> new IllegalArgumentException("해당 게시글이 존재하지 않습니다."));
         return PostResponse.from(post);
     }
 
     @Transactional(readOnly = true)
     public List<PostResponse> getAllPosts() {
-        return postRepository.findAll().stream()
+        // [수정] Fetch Join 메서드 사용
+        List<Post> posts = postRepository.findAllWithAuthorAndAttachments();
+        return posts.stream()
                 .map(PostResponse::from)
                 .collect(Collectors.toList());
     }
@@ -90,7 +90,6 @@ public class BoardService {
             List<Attachment> attachmentsToDelete = post.getAttachments().stream()
                     .filter(att -> request.getDeletedAttachmentUrls().contains(att.getFileUrl()))
                     .toList();
-
             for (Attachment attachment : attachmentsToDelete) {
                 s3Service.deleteFile(attachment.getFileUrl()); // S3에서 삭제
                 post.removeAttachment(attachment); // Post에서 연관관계 제거 (orphanRemoval=true로 DB에서 삭제됨)
@@ -123,10 +122,26 @@ public class BoardService {
         if (!post.getAuthor().getEmail().equals(email)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글을 삭제할 권한이 없습니다.");
         }
+
         // S3 파일 먼저 삭제
         for (Attachment attachment : post.getAttachments()) {
             s3Service.deleteFile(attachment.getFileUrl());
         }
         postRepository.delete(post);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PostResponse> searchPosts(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return getAllPosts();
+        }
+
+        // [수정] 키워드 소문자 변환 및 와일드카드(%) 처리
+        String searchKeyword = "%" + keyword.trim().toLowerCase() + "%";
+
+        List<Post> posts = postRepository.findByKeywordWithAuthorAndAttachments(searchKeyword);
+        return posts.stream()
+                .map(PostResponse::from)
+                .collect(Collectors.toList());
     }
 }
