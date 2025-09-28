@@ -2,9 +2,18 @@
 import apiClient from "./index";
 
 // 모든 게시글 조회
-export const getAllPosts = async () => {
-  return await apiClient.get("/board");
+export const getAllPosts = async ({ keyword, sortBy, direction, page, size }) => {
+  return await apiClient.get("/board", {
+    params: {
+      search: keyword,
+      sortBy,
+      direction,
+      page,
+      size,
+    },
+  });
 };
+
 
 // 특정 게시글 조회
 export const getPost = async (id) => {

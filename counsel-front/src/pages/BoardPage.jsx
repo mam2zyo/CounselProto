@@ -1,4 +1,3 @@
-// src/pages/BoardPage.jsx
 import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -13,7 +12,10 @@ export default function BoardPage() {
   const [page, setPage] = useState(0); // 0-based
   const [size] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
-  const [keyword, setKeyword] = useState("");
+
+  // 검색어 상태 분리: 입력 중인 검색어와 실제 검색어
+  const [inputKeyword, setInputKeyword] = useState("");
+  const [searchKeyword, setSearchKeyword] = useState("");
 
   // 정렬 상태
   const [sortBy, setSortBy] = useState("latest"); // latest | views | comments
@@ -23,11 +25,11 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // 번호 버튼 배열 (최대 7개 표시)
+  // 페이지 번호 버튼 배열 (최대 7개)
   const pageButtons = useMemo(() => {
     const maxButtons = 7;
     const pages = totalPages || 1;
-    const current = page; // 0-based
+    const current = page;
     const start = Math.max(
       0,
       Math.min(current - Math.floor(maxButtons / 2), pages - maxButtons)
@@ -36,7 +38,7 @@ export default function BoardPage() {
     return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   }, [page, totalPages]);
 
-  // 데이터 가져오기
+  // 데이터 가져오기 (searchKeyword 기준으로 호출)
   useEffect(() => {
     if (!isLoggedIn) {
       setPosts([]);
@@ -48,16 +50,18 @@ export default function BoardPage() {
       setLoading(true);
       setErr("");
       try {
-        const { data } = await getAllPosts({
-          search: keyword.trim(),
+        console.log("검색어 요청: ", searchKeyword);  // 디버그용
+
+          const { data } = await getAllPosts({
+          keyword: searchKeyword,
           sortBy,
-          direction: order, // 정렬 방향 서버로 전달
+          direction: order,
           page,
           size,
         });
 
         const list = Array.isArray(data?.content) ? data.content : [];
-        setPosts(list); // 프론트에서 reverse() 금지
+        setPosts(list);
         setTotalPages(data?.totalPages ?? 1);
       } catch (e) {
         console.error("게시글 목록 조회 실패", e);
@@ -70,13 +74,12 @@ export default function BoardPage() {
     };
 
     fetch();
-    // 페이지 바뀔 때 상단으로 스크롤 (사라진 것처럼 보이는 문제 방지)
     window.scrollTo({ top: 0, behavior: "instant" });
-  }, [isLoggedIn, keyword, sortBy, order, page, size]);
+  }, [isLoggedIn, searchKeyword, sortBy, order, page, size]);
 
-  // 창 포커스/가시성 복귀 시 자동 갱신 (현재 페이지 그대로 새로고침)
+  // 창 포커스/가시성 복귀 시 자동 갱신
   useEffect(() => {
-    const onFocus = () => setPage((p) => p); // 동일 값 set → effect 트리거
+    const onFocus = () => setPage((p) => p);
     const onVisibility = () => {
       if (document.visibilityState === "visible") setPage((p) => p);
     };
@@ -88,7 +91,7 @@ export default function BoardPage() {
     };
   }, []);
 
-  // 정렬 버튼
+  // 정렬 버튼 클릭 처리
   const handleSortClick = (key) => {
     if (sortBy === key) {
       setOrder((prev) => (prev === "desc" ? "asc" : "desc"));
@@ -96,12 +99,12 @@ export default function BoardPage() {
       setSortBy(key);
       setOrder("desc");
     }
-    setPage(0); // 정렬 바꾸면 첫 페이지로
+    setPage(0);
   };
   const arrow = (key) =>
     sortBy === key ? (order === "desc" ? " ▼" : " ▲") : "";
 
-  // 페이지 이동
+  // 페이지 이동 함수
   const goToPage = (idx) => {
     if (idx < 0 || idx > totalPages - 1) return;
     setPage(idx);
@@ -109,10 +112,22 @@ export default function BoardPage() {
   const handlePrev = () => goToPage(page - 1);
   const handleNext = () => goToPage(page + 1);
 
-  // 검색
-  const handleSearch = () => setPage(0);
+  // 검색 input 변경 시 inputKeyword 상태만 변경
+  const handleInputChange = (e) => {
+    setInputKeyword(e.target.value);
+  };
+
+  // 검색 실행 (검색어 상태 변경 + 페이지 초기화)
+  const handleSearch = () => {
+    setPage(0);
+    setSearchKeyword(inputKeyword.trim());
+  };
+
+  // 엔터키 눌렀을 때 검색 실행
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") handleSearch();
+    if (e.key === "Enter") {
+      handleSearch();
+    }
   };
 
   if (!isLoggedIn) {
@@ -147,11 +162,7 @@ export default function BoardPage() {
               ? "최신순"
               : "오래된순"
             : sortBy === "views"
-            ? order === "desc"
-              ? "조회순"
-              : "조회순"
-            : order === "desc"
-            ? "댓글순"
+            ? "조회순"
             : "댓글순"}
         </span>
 
@@ -197,7 +208,7 @@ export default function BoardPage() {
           <div className="hidden md:block w-3/12 text-center">작성일/시간</div>
         </div>
 
-        {/* 목록 */}
+        {/* 게시글 목록 */}
         {posts.length > 0 ? (
           posts.map((post) => (
             <div
@@ -216,68 +227,56 @@ export default function BoardPage() {
               </div>
               <div className="hidden md:block w-3/12 text-center text-gray-500 text-sm">
                 {post.createdAt
-                  ? new Date(post.createdAt).toLocaleString([], {
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  : "-"}
+                  ? new Date(post.createdAt).toLocaleString()
+                  : ""}
               </div>
             </div>
           ))
         ) : (
-          <div className="p-4 text-gray-500">
-            {loading ? "불러오는 중…" : "게시글이 없습니다."}
+          <div className="p-4 text-center text-gray-500">
+            검색 결과가 없습니다.
           </div>
         )}
       </div>
 
-      {/* 페이지네이션 */}
-      <div className="flex justify-center items-center mt-6 gap-2 flex-wrap">
+      {/* 페이징 */}
+      <div className="flex justify-center items-center gap-2 mt-4">
         <button
-          className="btn btn-sm"
+          className="btn btn-ghost"
           onClick={handlePrev}
           disabled={page === 0}
         >
-          ◀ 이전
+          &lt; 이전
         </button>
-
-        {pageButtons.map((p) => (
+        {pageButtons.map((idx) => (
           <button
-            key={p}
-            onClick={() => goToPage(p)}
-            className={`btn btn-sm ${p === page ? "btn-primary" : "btn-ghost"}`}
+            key={idx}
+            className={`btn btn-ghost ${page === idx ? "btn-active" : ""}`}
+            onClick={() => goToPage(idx)}
           >
-            {p + 1}
+            {idx + 1}
           </button>
         ))}
-
         <button
-          className="btn btn-sm"
+          className="btn btn-ghost"
           onClick={handleNext}
           disabled={page >= totalPages - 1}
         >
-          다음 ▶
+          다음 &gt;
         </button>
-
-        <span className="text-sm text-gray-700 ml-2">
-          {page + 1} / {totalPages}
-        </span>
       </div>
 
-      {/* 검색 바 */}
-      <div className="flex mt-8 items-center justify-center">
+      {/* 검색 */}
+      <div className="mt-6 flex gap-2">
         <input
           type="text"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          onKeyDown={handleKeyDown}
+          className="input input-bordered flex-grow"
           placeholder="제목, 내용 검색"
-          className="input input-bordered w-full max-w-xs"
+          value={inputKeyword}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
         />
-        <button onClick={handleSearch} className="btn btn-primary ml-2">
+        <button className="btn btn-primary" onClick={handleSearch}>
           검색
         </button>
       </div>
