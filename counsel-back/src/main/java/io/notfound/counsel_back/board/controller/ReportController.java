@@ -7,6 +7,7 @@ import io.notfound.counsel_back.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -19,9 +20,10 @@ public class ReportController {
     @PostMapping
     public ResponseEntity<Report> createReport(
             @RequestBody ReportRequestDto requestDto,
-            @AuthenticationPrincipal User user
-    ) {
-        Report saved = reportService.saveReport(requestDto, user);
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String email = userDetails.getUsername();
+
+        Report saved = reportService.saveReport(requestDto, email);
         return ResponseEntity.ok(saved);
     }
 }
