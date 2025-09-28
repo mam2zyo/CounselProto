@@ -15,7 +15,9 @@ public class PostResponse {
     private String title;
     private String content;
     private List<String> attachmentUrls;
+    private String authorEmail; // 추가 정보 (작성자)
 
+    // 추가: Post 엔티티에 등록된 작성자 정보를 가져오기 위함
     public static PostResponse from(Post post) {
         PostResponse response = new PostResponse();
         response.postId = post.getId();
@@ -23,7 +25,8 @@ public class PostResponse {
         response.content = post.getContent();
         response.attachmentUrls = post.getAttachments().stream()
                 .map(Attachment::getFileUrl)
-                .collect(Collectors.toList());
+                .toList();
+        response.authorEmail = post.getAuthor() != null ? post.getAuthor().getEmail() : null; // 작성자 정보
         return response;
     }
 }
