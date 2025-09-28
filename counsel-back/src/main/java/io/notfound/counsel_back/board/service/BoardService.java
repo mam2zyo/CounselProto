@@ -10,6 +10,10 @@ import io.notfound.counsel_back.board.repository.PostRepository;
 import io.notfound.counsel_back.user.entity.User;
 import io.notfound.counsel_back.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,7 +53,7 @@ public class BoardService {
                         .post(savedPost)
                         .build();
                 attachmentRepository.save(attachment);
-                savedPost.getAttachments().add(attachment); // 양방향 매핑 처리
+                savedPost.getAttachments().add(attachment);
             }
         }
         return PostResponse.from(savedPost);
@@ -63,27 +67,36 @@ public class BoardService {
     }
 
     /**
-     * 제목 또는 내용으로 게시글을 검색합니다.
-     * 검색어가 없거나 비어있으면 모든 게시글을 반환합니다.
-     * @param search 검색 키워드
-     * @return 검색 결과 (PostResponse 리스트)
+     * 🌟 최종 통합된 게시글 조회 및 검색 메서드 (페이지네이션/정렬 적용)
      */
     @Transactional(readOnly = true)
-    public List<PostResponse> searchPosts(String search) {
-        List<Post> posts;
+    public Page<PostResponse> searchPosts(String search, String sortBy, String direction, int page, int size) {
 
-        if (search == null || search.trim().isEmpty()) {
-            // 🌟 수정: 새로운 Fetch Join 메서드 사용
-            posts = postRepository.findAllWithAuthorAndAttachments();
-        } else {
-            // 🌟 수정: 새로운 Fetch Join 검색 메서드 사용
-            posts = postRepository.searchByTitleOrContentWithAuthorAndAttachments(search.trim());
-        }
+        // 1. Sort 객체 생성
+        String sortProperty = switch (sortBy) {
+            case "views" -> "viewCount";
+            case "comments" -> "commentCount";
+            case "latest" -> "createdAt";
+            default -> "createdAt";
+        };
 
-        // 이 시점에 이미 Attachment와 User 정보가 로드되어 있어 Lazy Loading 오류가 발생하지 않습니다.
-        return posts.stream()
-                .map(PostResponse::from)
-                .toList();
+        Sort.Direction sortDirection = direction.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort sort = Sort.by(sortDirection, sortProperty);
+
+        // 2. Pageable 객체 생성
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        /**
+         * 🌟 검색어 처리 수정:
+         * 검색어가 null이거나 공백이면 빈 문자열("")로 통일하여 Repository로 전달합니다.
+         */
+        String finalSearch = (search != null) ? search.trim() : "";
+
+        // 3. Repository 호출
+        Page<Post> postPage = postRepository.findPostsWithPagingAndSearch(finalSearch, pageable);
+
+        // 4. Page<Post>를 Page<PostResponse>로 변환하여 반환
+        return postPage.map(PostResponse::from);
     }
 
     @Transactional
@@ -97,18 +110,16 @@ public class BoardService {
 
         post.update(request.getTitle(), request.getContent());
 
-        // 기존 첨부파일 삭제
         if (request.getDeletedAttachmentUrls() != null) {
             List<Attachment> attachmentsToDelete = post.getAttachments().stream()
                     .filter(att -> request.getDeletedAttachmentUrls().contains(att.getFileUrl()))
                     .toList();
             for (Attachment attachment : attachmentsToDelete) {
                 s3Service.deleteFile(attachment.getFileUrl());
-                post.removeAttachment(attachment); // Post 엔티티에서 제거 (CascadeType.ALL로 삭제)
+                post.removeAttachment(attachment);
             }
         }
 
-        // 새 첨부파일 추가
         if (request.getNewAttachments() != null) {
             for (MultipartFile file : request.getNewAttachments()) {
                 String fileUrl = s3Service.uploadFile(file);
@@ -133,7 +144,6 @@ public class BoardService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글을 삭제할 권한이 없습니다.");
         }
 
-        // S3 파일 삭제
         for (Attachment attachment : post.getAttachments()) {
             s3Service.deleteFile(attachment.getFileUrl());
         }
