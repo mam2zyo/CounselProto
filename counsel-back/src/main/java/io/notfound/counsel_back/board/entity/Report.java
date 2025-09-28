@@ -4,6 +4,8 @@ import io.notfound.counsel_back.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @Builder
@@ -27,4 +29,15 @@ public class Report {
 
     @Enumerated(EnumType.STRING)
     private ReportStatus status;
+
+    private LocalDateTime createdAt;
+
+    public void updateStatus(ReportStatus newStatus) {
+        this.status = newStatus;
+    }
+
+    @PrePersist
+    public void createdAt() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

@@ -1,6 +1,7 @@
 package io.notfound.counsel_back.board.service;
 
 import io.notfound.counsel_back.board.dto.ReportRequestDto;
+import io.notfound.counsel_back.board.dto.ReportResponseDto;
 import io.notfound.counsel_back.board.entity.*;
 import io.notfound.counsel_back.board.repository.CommentRepository;
 import io.notfound.counsel_back.board.repository.PostRepository;
@@ -9,7 +10,11 @@ import io.notfound.counsel_back.user.entity.User;
 import io.notfound.counsel_back.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -62,5 +67,49 @@ public class ReportService {
             commentRepository.findById(targetId)
                     .orElseThrow(() -> new EntityNotFoundException("신고 대상을 찾을 수 없습니다. (댓글 ID: " + targetId + ")"));
         }
+    }
+
+    /**
+     * 관리자용 - 특정 신고의 상태를 변경
+     * @param reportId 신고 ID
+     * @param newStatus 새로운 상태 (APPROVED / REJECTED)
+     * @return 상태가 변경된 Report 엔티티
+     */
+    public Report updateReportStatus(Long reportId, ReportStatus newStatus) {
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new EntityNotFoundException("해당 ID의 신고를 찾을 수 없습니다: " + reportId));
+
+        // PENDING 상태일 때만 변경 가능하도록 하거나, 다른 비즈니스 로직 추가 가능
+        if (newStatus == ReportStatus.PENDING) {
+            throw new IllegalArgumentException("신고 상태를 PENDING으로 변경할 수 없습니다.");
+        }
+
+        // Lombok의 @Builder나 별도의 setter를 이용해 status 필드 수정
+        // Report 엔티티에 status를 변경할 수 있는 메서드를 만드는 것이 가장 객체지향적임
+        report.updateStatus(newStatus); // 이 메서드를 Report 엔티티에 추가해야 함
+
+        return reportRepository.save(report);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ReportResponseDto> getReportsForAdmin(
+            @Nullable ReportStatus status,
+            @Nullable ReportTargetType targetType,
+            Pageable pageable) {
+
+        Specification<Report> spec = (root, query, cb) -> {
+            return cb.conjunction(); // 모든 조건에 맞는 경우 (기본 조건 없음)
+        };
+
+        if (status != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
+        }
+        if (targetType != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("targetType"), targetType));
+        }
+
+        Page<Report> reportPage = reportRepository.findAll(spec, pageable);
+
+        return reportPage.map(ReportResponseDto::new);
     }
 }

@@ -6,8 +6,8 @@ package io.notfound.counsel_back.user.entity;
  * USER: 일반 사용자 권한
  */
 public enum UserRole {
-    ADMIN("관리자"),
-    USER("일반사용자");
+    ADMIN("admin"),
+    USER("user");
 
     private final String description;
 
