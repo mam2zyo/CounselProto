@@ -1,5 +1,6 @@
 package io.notfound.counsel_back.board.service;
 
+import io.notfound.counsel_back.board.dto.AIModerationResponse;
 import io.notfound.counsel_back.board.dto.ReportRequestDto;
 import io.notfound.counsel_back.board.dto.ReportResponseDto;
 import io.notfound.counsel_back.board.entity.*;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.Nullable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -28,7 +30,9 @@ public class ReportService {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final AIModerationService aiModerationService;
 
+    @Transactional
     public Report saveReport(ReportRequestDto requestDto, String email) {
 
         User reporter = userRepository.findByEmail(email)
@@ -56,7 +60,43 @@ public class ReportService {
                 .status(ReportStatus.PENDING) // 초기 상태는 '대기중'
                 .build();
 
-        return reportRepository.save(report);
+        Report savedReport = reportRepository.save(report);
+
+        processReportWithAI(savedReport);
+
+        return savedReport;
+    }
+
+    @Async
+    @Transactional
+    public void processReportWithAI(Report report) {
+        try {
+            // AI 분석에 필요한 데이터 조회
+            Comment comment = commentRepository.findById(report.getTargetId())
+                    .orElseThrow(() -> new EntityNotFoundException("신고된 댓글을 찾을 수 없습니다."));
+            Post post = comment.getPost();
+
+            // AI 서비스 호출
+            AIModerationResponse aiResponse = aiModerationService.moderateComment(
+                    post.getContent(),
+                    comment.getContent(),
+                    report.getReason()
+            );
+
+            // AI 결정에 따라 신고 상태 업데이트
+            ReportStatus finalStatus = "APPROVE_REPORT".equalsIgnoreCase(aiResponse.getDecision())
+                    ? ReportStatus.APPROVED
+                    : ReportStatus.REJECTED;
+
+            report.updateStatus(finalStatus);
+            // 필요하다면 AI의 판단 근거(justification)도 Report 엔티티에 저장할 수 있음
+            // report.updateJustification(aiResponse.getJustification());
+            reportRepository.save(report);
+
+        } catch (Exception e) {
+            // 에러 발생 시 로그를 남기고, 관리자가 직접 처리하도록 둘 수 있음
+            // log.error("AI 신고 처리 중 에러 발생. Report ID: {}", report.getId(), e);
+        }
     }
 
     private void validateTargetExists(Long targetId, ReportTargetType targetType) {
