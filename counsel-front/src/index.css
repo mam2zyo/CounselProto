@@ -4,3 +4,8 @@
   themes: light --default, dark;
   root: ":root";
 }
+
+/* src/index.css */
+.whitespace-pre-wrap {
+  white-space: pre-wrap;
+}
