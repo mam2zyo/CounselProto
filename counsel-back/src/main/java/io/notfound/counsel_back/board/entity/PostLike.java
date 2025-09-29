@@ -6,7 +6,7 @@ import lombok.*;
 
 @Entity
 @Table(name = "post_likes",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"post_id", "user_id"})) // 유저당 게시글 좋아요 1회 제한
+        uniqueConstraints = @UniqueConstraint(columnNames = {"post_id", "user_id"}))
 @Getter
 @Setter
 @NoArgsConstructor

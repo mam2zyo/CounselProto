@@ -115,7 +115,7 @@ public class BoardController {
         return ResponseEntity.noContent().build();
     }
 
-    /** 게시글 좋아요 토글 */
+    // 게시글 좋아요 토글
     @PostMapping("/{postId}/like")
     public ResponseEntity<Void> toggleLike(
             @PathVariable Long postId,
@@ -130,7 +130,7 @@ public class BoardController {
         return ResponseEntity.ok().build();
     }
 
-    /** 게시글 좋아요 상태 조회 */
+    // 게시글 좋아요 상태 조회
     @GetMapping("/{postId}/like")
     public ResponseEntity<Map<String, Object>> getLikeStatus(
             @PathVariable Long postId,

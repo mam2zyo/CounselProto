@@ -36,12 +36,10 @@ public class Post {
     @ColumnDefault("0")
     private int views;
 
-    // 댓글 개수 DB 저장 (목록 정렬/표시에 사용)
     @Column(nullable = false)
     @ColumnDefault("0")
     private int commentCount;
 
-    // ✅ 좋아요 수 필드 추가
     @Column(nullable = false)
     @ColumnDefault("0")
     private int likeCount;
@@ -54,6 +52,9 @@ public class Post {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Attachment> attachments = new ArrayList<>();
 
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostLike> postLikes = new ArrayList<>();
+
     @PrePersist
     public void createdAt() {
         if (this.createdAt == null) {
@@ -61,7 +62,19 @@ public class Post {
         }
         this.views = Math.max(0, this.views);
         this.commentCount = Math.max(0, this.commentCount);
-        this.likeCount = Math.max(0, this.likeCount); // ✅ 좋아요 수도 음수 방지
+        this.likeCount = Math.max(0, this.likeCount);
+    }
+
+    // 좋아요 수 증가
+    public void increaseLikeCount() {
+        this.likeCount++;
+    }
+
+    // 좋아요 수 감소
+    public void decreaseLikeCount() {
+        if (this.likeCount > 0) {
+            this.likeCount--;
+        }
     }
 
     public void incrementViews() {
@@ -99,12 +112,11 @@ public class Post {
         this.content = content;
     }
 
-    // ✅ 좋아요 수 증가
+    // 좋아요 수 증감 메서드
     public void increaseLikeCount() {
         this.likeCount++;
     }
 
-    // ✅ 좋아요 수 감소 (음수 방지)
     public void decreaseLikeCount() {
         if (this.likeCount > 0) {
             this.likeCount--;

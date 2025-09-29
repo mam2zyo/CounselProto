@@ -7,11 +7,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
 
-    long countByPost(Post post); // 특정 게시글 좋아요 수 조회
+    // 특정 게시글에 대한 좋아요 수 조회
+    long countByPost(Post post);
 
-    boolean existsByPostAndUser(Post post, User user); // 해당 유저가 해당 게시글 좋아요 했는지 확인
+    // 해당 게시글에 특정 사용자가 좋아요를 눌렀는지 확인
+    boolean existsByPostAndUser(Post post, User user);
 
-    void deleteByPostAndUser(Post post, User user); // 좋아요 취소
+    // 특정 게시글에 대해 특정 사용자의 좋아요 취소
+    void deleteByPostAndUser(Post post, User user);
 
-    void deleteByPost(Post post); // 게시글 삭제 시 관련 좋아요들 삭제 (옵션)
+    // 게시글 삭제 시 해당 게시글에 관련된 모든 좋아요 삭제 (옵션)
+    void deleteByPost(Post post);
 }

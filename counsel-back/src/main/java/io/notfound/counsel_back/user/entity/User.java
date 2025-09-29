@@ -1,5 +1,6 @@
 package io.notfound.counsel_back.user.entity;
 
+import io.notfound.counsel_back.board.entity.PostLike;
 import io.notfound.counsel_back.conversation.entity.Conversation;
 import jakarta.persistence.*;
 import lombok.*;
@@ -18,8 +19,6 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 public class User {
-
-    private LocalDateTime accessUntil;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,6 +43,11 @@ public class User {
     @Enumerated(EnumType.STRING)
     private ProviderType provider;
 
+    // 일반 사용자가 좋아요한 게시글 리스트
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PostLike> postLikes = new ArrayList<>();
+
+    // 사용자가 참여한 대화 리스트
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Conversation> conversations = new ArrayList<>();
 
@@ -89,6 +93,7 @@ public class User {
     public boolean isLocalUser() {
         return password != null && !isOAuth2User();
     }
+
     public void updateProvider(ProviderType provider, String providerId) {
         this.provider = provider;
         this.providerId = providerId;
