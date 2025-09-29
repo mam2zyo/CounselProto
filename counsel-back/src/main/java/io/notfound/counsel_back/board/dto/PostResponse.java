@@ -18,7 +18,7 @@ public class PostResponse {
     private String content;      // 게시글 내용
     private List<String> attachmentUrls;  // 첨부파일 URL 리스트
     private Integer viewCount;   // 조회수
-    private Integer commentCount;// 댓글 수
+    private Integer commentCount; // 댓글 수
     private String createdAt;    // 생성일시 (yyyy-MM-dd HH:mm 형식)
 
     private Integer likeCount;   // 좋아요 수

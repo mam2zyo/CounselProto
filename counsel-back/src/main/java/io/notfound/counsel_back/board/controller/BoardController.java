@@ -54,8 +54,8 @@ public class BoardController {
     @PostMapping("/{id}/view")
     public ResponseEntity<Void> recordUniqueView(
             @PathVariable Long id,
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
+            @AuthenticationPrincipal UserDetails userDetails) {
+
         final String email = (userDetails != null) ? userDetails.getUsername() : null;
         boardService.recordUniqueView(id, email);
         return ResponseEntity.ok().build();
@@ -124,9 +124,10 @@ public class BoardController {
         if (userDetails == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        String email = userDetails.getUsername();
 
-        boardService.toggleLike(postId, email);
+        String email = userDetails.getUsername(); // 로그인한 유저의 이메일
+        boardService.toggleLike(postId, email); // 좋아요 토글 서비스 호출
+
         return ResponseEntity.ok().build();
     }
 

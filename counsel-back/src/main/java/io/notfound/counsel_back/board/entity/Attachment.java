@@ -22,4 +22,14 @@ public class Attachment {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "post_id")
     private Post post;
+
+    // post setter 추가
+    public void setPost(Post post) {
+        this.post = post;
+    }
+
+    // post getter 추가
+    public Post getPost() {
+        return this.post;
+    }
 }

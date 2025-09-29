@@ -111,15 +111,4 @@ public class Post {
         this.title = title;
         this.content = content;
     }
-
-    // 좋아요 수 증감 메서드
-    public void increaseLikeCount() {
-        this.likeCount++;
-    }
-
-    public void decreaseLikeCount() {
-        if (this.likeCount > 0) {
-            this.likeCount--;
-        }
-    }
 }

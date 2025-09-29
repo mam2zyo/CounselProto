@@ -61,6 +61,9 @@ public class User {
     @Column(length = 500)
     private String refreshToken;
 
+    @Column(nullable = true)
+    private LocalDateTime accessUntil;  // 접근 만료 시간 필드
+
     @Builder
     public User(String email, String userName, String password, UserRole role,
                 String providerId, ProviderType provider) {
@@ -94,9 +97,20 @@ public class User {
         return password != null && !isOAuth2User();
     }
 
+    /**
+     * 제공자를 업데이트합니다.
+     */
     public void updateProvider(ProviderType provider, String providerId) {
         this.provider = provider;
         this.providerId = providerId;
     }
 
+    // AccessUntil 필드에 대한 getter와 setter 추가
+    public LocalDateTime getAccessUntil() {
+        return this.accessUntil;
+    }
+
+    public void setAccessUntil(LocalDateTime accessUntil) {
+        this.accessUntil = accessUntil;
+    }
 }

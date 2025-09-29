@@ -36,7 +36,7 @@ public class BoardService {
     private final PostViewRepository postViewRepository;
     private final PostLikeRepository postLikeRepository;
 
-    //게시글 생성
+    // 게시글 생성
     @Transactional
     public PostResponse createPost(PostRequest request, String email) {
         User user = userRepository.findByEmail(email)
@@ -65,7 +65,7 @@ public class BoardService {
         return PostResponse.from(savedPost);
     }
 
-    //게시글 상세 조회
+    // 게시글 상세 조회
     @Transactional(readOnly = true)
     public PostResponse getPostWithLikeInfo(Long id, String email) {
         Post post = postRepository.findByIdWithAuthorAndAttachments(id)
@@ -82,7 +82,7 @@ public class BoardService {
         return PostResponse.from(post, liked);
     }
 
-    //게시글 목록 조회
+    // 게시글 목록 조회
     @Transactional(readOnly = true)
     public Page<PostResponse> getAllPosts(String search, Pageable pageable, String email) {
         Page<Post> posts;
@@ -103,7 +103,7 @@ public class BoardService {
         });
     }
 
-    //댓글순 정렬 게시글 목록
+    // 댓글순 정렬 게시글 목록
     @Transactional(readOnly = true)
     public Page<PostResponse> getAllPostsOrderByCommentCount(String search, Pageable pageable, String direction) {
         Sort.Direction dir = "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
@@ -125,9 +125,7 @@ public class BoardService {
         return posts.map(PostResponse::from);
     }
 
-    /**
-     * 게시글 수정
-     */
+    // 게시글 수정
     @Transactional
     public PostResponse updatePost(Long postId, PostUpdateRequest request, String email) {
         Post post = postRepository.findById(postId)
@@ -170,7 +168,7 @@ public class BoardService {
         return PostResponse.from(post);
     }
 
-    //게시글 삭제
+    // 게시글 삭제
     @Transactional
     public void deletePost(Long id, String email) {
         Post post = postRepository.findById(id)
@@ -202,7 +200,7 @@ public class BoardService {
         postRepository.delete(post);
     }
 
-    //댓글 수 증감
+    // 댓글 수 증감
     @Transactional
     public void increaseCommentCount(Long postId) {
         int updated = postRepository.changeCommentCount(postId, +1);
@@ -215,8 +213,8 @@ public class BoardService {
         if (updated == 0) throw new PostNotFoundException("해당 게시글이 존재하지 않습니다.");
     }
 
-    //유니크 조회수 기록
-     @Transactional
+    // 유니크 조회수 기록
+    @Transactional
     public void recordUniqueView(Long postId, String email) {
         if (email == null || email.isBlank()) {
             return;
@@ -240,7 +238,7 @@ public class BoardService {
         postRepository.incrementViews(postId);
     }
 
-    //게시글 좋아요 토글
+    // 게시글 좋아요 토글
     @Transactional
     public void toggleLike(Long postId, String email) {
         User user = userRepository.findByEmail(email)
