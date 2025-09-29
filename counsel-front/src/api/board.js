@@ -1,16 +1,16 @@
 // src/api/board.js
 import apiClient from "./index";
 
-// ✅ 모든 게시글 조회 (검색/정렬/페이지 파라미터 지원 + 정렬 방향까지 서버에 전달)
+// 모든 게시글 조회 (검색/정렬/페이지 파라미터 지원 + 정렬 방향까지 서버에 전달)
 export const getAllPosts = async ({
-  search = "",
+  keyword = "",
   sortBy = "latest", // "latest" | "views" | "comments"
   direction = "desc", // "asc" | "desc"  ← 중요!
   page = 0,
   size = 10,
 } = {}) => {
   return await apiClient.get("/board", {
-    params: { search, sortBy, direction, page, size },
+    params: { search: keyword, sortBy, direction, page, size },
   });
 };
 

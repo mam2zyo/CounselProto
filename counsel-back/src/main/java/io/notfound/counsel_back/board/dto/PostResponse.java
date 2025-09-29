@@ -16,13 +16,12 @@ public class PostResponse {
     private Long postId;
     private Long authorId;
     private String title;
-    private String content;             // 상세 조회 시 포함
+    private String content;
     private List<String> attachmentUrls;
-    private Integer viewCount;          // 프론트 호환
-    private Integer commentCount;       // 프론트 호환
-    private String createdAt;           // 문자열로 내려줌
+    private Integer viewCount;
+    private Integer commentCount;
+    private String createdAt;
 
-    // 추가: Post 엔티티에 등록된 작성자 정보를 가져오기 위함
     public static PostResponse from(Post post) {
 
         return PostResponse.builder()

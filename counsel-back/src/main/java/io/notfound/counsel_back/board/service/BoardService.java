@@ -30,7 +30,7 @@ public class BoardService {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final S3Service s3Service;
-    private final PostViewRepository postViewRepository; // ✅ 유니크 뷰 저장소
+    private final PostViewRepository postViewRepository;
 
     /** 게시글 생성 */
     @Transactional
