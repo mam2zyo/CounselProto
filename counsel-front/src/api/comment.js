@@ -20,3 +20,13 @@ export const updateComment = async (commentId, commentData) => {
 export const deleteComment = async (commentId) => {
   return await apiClient.delete(`/board/comments/${commentId}`);
 };
+
+// 댓글 신고
+export const reportComment = async (commentId, reason) => {
+  const reportData = {
+    targetId: commentId,
+    targetType: "COMMENT", // 신고 유형은 'COMMENT'로 고정
+    reason: reason,
+  };  
+  return await apiClient.post("/reports", reportData);
+};
