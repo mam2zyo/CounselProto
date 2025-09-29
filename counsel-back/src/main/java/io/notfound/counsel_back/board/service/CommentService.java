@@ -16,15 +16,15 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class CommentService {
 
     private final CommentRepository commentRepository;
-    private final PostRepository postRepository; // 게시글 존재 여부 확인용
+    private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final BoardService boardService;
 
     @Transactional
     public CommentResponse createComment(Long postId, CommentRequest request, String email) {
@@ -35,19 +35,20 @@ public class CommentService {
         User writer = userRepository.findByEmail(email)
                 .orElseThrow(() -> new NoSuchElementException("User not found with email: " + email));
 
+        // 컬렉션 편의 메서드(post.addComment) 대신 직접 연관만 세팅 (중복 카운트 방지)
         Comment comment = Comment.builder()
                 .content(request.getContent())
                 .writer(writer)
                 .post(post)
                 .build();
 
-        post.addComment(comment); // 댓글을 게시글에 추가
-
         Comment savedComment = commentRepository.save(comment);
 
-        return CommentResponse.from(savedComment); // 정적 팩토리 메서드를 통해 CommentResponse 반환
-    }
+        // DB에서 commentCount = commentCount + 1 (경합에 안전)
+        boardService.increaseCommentCount(post.getId());
 
+        return CommentResponse.from(savedComment);
+    }
 
     // 특정 게시글의 모든 댓글 조회
     @Transactional(readOnly = true)
@@ -85,6 +86,15 @@ public class CommentService {
         if (!comment.getWriter().getEmail().equals(email)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글을 삭제할 권한이 없습니다.");
         }
-        commentRepository.deleteById(commentId);
+
+        Long postId = comment.getPost() != null ? comment.getPost().getId() : null;
+
+        // 먼저 삭제
+        commentRepository.delete(comment);
+
+        // 그 다음 DB에서 commentCount - 1 (post가 있을 때만)
+        if (postId != null) {
+            boardService.decreaseCommentCount(postId);
+        }
     }
 }
