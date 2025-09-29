@@ -16,11 +16,11 @@ public class PostResponse {
     private Long postId;
     private Long authorId;
     private String title;
-    private String content;             // 상세 조회 시 포함
+    private String content;
     private List<String> attachmentUrls;
-    private Integer viewCount;          // 프론트 호환
-    private Integer commentCount;       // 프론트 호환
-    private String createdAt;           // 문자열로 내려줌
+    private Integer viewCount;
+    private Integer commentCount;
+    private String createdAt;
 
     public static PostResponse from(Post post) {
 

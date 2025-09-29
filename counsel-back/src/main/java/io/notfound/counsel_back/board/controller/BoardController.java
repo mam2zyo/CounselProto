@@ -23,7 +23,6 @@ public class BoardController {
 
     private final BoardService boardService;
 
-    /** 게시글 생성 (로그인 필요, 파일 업로드 지원) */
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<PostResponse> createPost(
             @ModelAttribute PostRequest request,
@@ -68,29 +67,23 @@ public class BoardController {
     public ResponseEntity<Page<PostResponse>> getAllPosts(
             @RequestParam(required = false) String search,
             @RequestParam(required = false, defaultValue = "latest") String sortBy,
-            @RequestParam(required = false, defaultValue = "desc") String direction,   // ✅ 정렬 방향 추가
+            @RequestParam(required = false, defaultValue = "desc") String direction,
             @PageableDefault(size = 10) Pageable pageable
     ) {
         final String key = (sortBy == null) ? "latest" : sortBy.trim().toLowerCase();
 
-        // ✅ 댓글순은 COUNT/필드 기반 정렬 전용 서비스로 위임 (방향 포함)
+        // 댓글순은 COUNT/필드 기반 정렬 전용 서비스로 위임 (방향 포함)
         if ("comments".equals(key)) {
             Page<PostResponse> responses =
                     boardService.getAllPostsOrderByCommentCount(search, pageable, direction);
             return ResponseEntity.ok(responses);
         }
 
-        // ✅ 최신/조회수는 엔티티 필드 정렬
-        String sortProperty;
-        switch (key) {
-            case "views":
-                sortProperty = "views";       // Post 엔티티의 조회수 필드
-                break;
-            case "latest":
-            default:
-                sortProperty = "createdAt";   // 최신순
-                break;
-        }
+        // 최신/조회수는 엔티티 필드 정렬
+        String sortProperty = switch (key) {
+            case "views" -> "views";       // Post 엔티티의 조회수 필드
+            default -> "createdAt";   // 최신순
+        };
 
         Sort.Direction dir = "asc".equalsIgnoreCase(direction)
                 ? Sort.Direction.ASC : Sort.Direction.DESC;

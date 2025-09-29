@@ -20,6 +20,7 @@ public class Post {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String title;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -36,7 +37,6 @@ public class Post {
     @ColumnDefault("0")
     private int views;
 
-    // 댓글 개수 DB 저장 (목록 정렬/표시에 사용)
     @Column(nullable = false)
     @ColumnDefault("0")
     private int commentCount;
@@ -58,7 +58,7 @@ public class Post {
         this.commentCount = (this.commentCount < 0) ? 0 : this.commentCount;
     }
 
-    // (참고) 조회수는 서비스/레포지토리에서 JPQL UPDATE로 원자적으로 증가시킬 예정
+    // 조회수는 서비스/레포지토리에서 JPQL UPDATE로 원자적으로 증가
     public void incrementViews() {
         this.views++;
     }
