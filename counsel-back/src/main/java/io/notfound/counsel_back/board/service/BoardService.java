@@ -79,11 +79,9 @@ public class BoardService {
     public Page<PostResponse> getAllPosts(String search, Pageable pageable) {
         Page<Post> posts;
         if (search == null || search.trim().isEmpty()) {
-            posts = postRepository.findAll(pageable);
+            posts = postRepository.findAllWithAuthorAndAttachments(pageable);
         } else {
-            posts = postRepository.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(
-                    search, search, pageable
-            );
+            posts = postRepository.findByKeywordContainingIgnoreCase(search.trim(), pageable);
         }
         return posts.map(PostResponse::from);
     }
@@ -101,10 +99,10 @@ public class BoardService {
 
         Page<Post> posts;
         if (search == null || search.trim().isEmpty()) {
-            posts = postRepository.findAll(sorted);
+            posts = postRepository.findAllWithAuthorAndAttachments(sorted);
         } else {
             String q = search.trim();
-            posts = postRepository.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(q, q, sorted);
+            posts = postRepository.findByKeywordContainingIgnoreCase(search.trim(), sorted);
         }
         return posts.map(PostResponse::from);
     }
@@ -124,7 +122,7 @@ public class BoardService {
         // 본문/제목 수정
         post.update(request.getTitle(), request.getContent());
 
-        // 1) 삭제 요청된 파일 처리
+        // 삭제 요청된 파일 처리
         if (request.getDeletedAttachmentUrls() != null) {
             List<Attachment> attachmentsToDelete = post.getAttachments().stream()
                     .filter(att -> request.getDeletedAttachmentUrls().contains(att.getFileUrl()))
@@ -139,7 +137,7 @@ public class BoardService {
             }
         }
 
-        // 2) 새로 추가된 파일 처리
+        // 새로 추가된 파일 처리
         if (request.getNewAttachments() != null) {
             for (MultipartFile file : request.getNewAttachments()) {
                 String fileUrl = s3Service.uploadFile(file);
@@ -167,14 +165,14 @@ public class BoardService {
             throw new UnauthorizedActionException("게시글을 삭제할 권한이 없습니다.");
         }
 
-        // 1) 유니크 뷰 기록 먼저 삭제 (FK 충돌 방지)
+        // 유니크 뷰 기록 먼저 삭제 (FK 충돌 방지)
         try {
             postViewRepository.deleteByPostId(id);
         } catch (Exception ex) {
             System.err.println("[WARN] PostView 삭제 중 문제 발생(postId=" + id + "): " + ex.getMessage());
         }
 
-        // 2) S3 파일 삭제 (실패해도 계속 진행)
+        // S3 파일 삭제 (실패해도 계속 진행)
         if (post.getAttachments() != null) {
             for (Attachment attachment : post.getAttachments()) {
                 String url = attachment.getFileUrl();
@@ -186,8 +184,7 @@ public class BoardService {
                 }
             }
         }
-
-        // 3) 게시글 삭제 (attachments/comments 는 cascade + orphanRemoval 가정)
+        // 게시글 삭제 (attachments/comments 는 cascade + orphanRemoval 가정)
         postRepository.delete(post);
     }
 
