@@ -32,8 +32,8 @@ public class BoardService {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final S3Service s3Service;
-    private final PostViewRepository postViewRepository; // 유니크 뷰 저장소
-    private final PostLikeRepository postLikeRepository; // 좋아요 저장소
+    private final PostViewRepository postViewRepository;
+    private final PostLikeRepository postLikeRepository;
 
     /** 게시글 생성 */
     @Transactional
@@ -49,10 +49,9 @@ public class BoardService {
 
         final Post savedPost = postRepository.save(post);
 
-        // 첨부파일 업로드 및 연관 추가
         if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
             for (MultipartFile file : request.getAttachments()) {
-                String fileUrl = s3Service.uploadFile(file); // 파일 S3 업로드
+                String fileUrl = s3Service.uploadFile(file);
                 Attachment attachment = Attachment.builder()
                         .fileName(file.getOriginalFilename())
                         .fileUrl(fileUrl)
@@ -61,16 +60,15 @@ public class BoardService {
                 savedPost.addAttachment(attachment);
             }
         }
+
         return PostResponse.from(savedPost);
     }
 
-    /** 게시글 상세 조회 시 좋아요 수, 로그인 유저 좋아요 여부 포함 */
+    /** 게시글 상세 조회 */
     @Transactional(readOnly = true)
     public PostResponse getPostWithLikeInfo(Long id, String email) {
         Post post = postRepository.findByIdWithAuthorAndAttachments(id)
                 .orElseThrow(() -> new PostNotFoundException("게시글이 존재하지 않습니다."));
-
-        long likeCount = postLikeRepository.countByPost(post);
 
         boolean liked = false;
         if (email != null && !email.isBlank()) {
@@ -80,10 +78,10 @@ public class BoardService {
             }
         }
 
-        return PostResponse.from(post, (int) likeCount, liked);
+        return PostResponse.from(post, liked);
     }
 
-    /** 게시글 목록 조회 시 좋아요 정보 포함 */
+    /** 게시글 목록 조회 */
     @Transactional(readOnly = true)
     public Page<PostResponse> getAllPosts(String search, Pageable pageable, String email) {
         Page<Post> posts;
@@ -94,23 +92,17 @@ public class BoardService {
                     search, search, pageable);
         }
 
-        final User finalUser; // effectively final로 만들어서 람다 내에서 사용 가능하게 함
-        if (email != null && !email.isBlank()) {
-            finalUser = userRepository.findByEmail(email).orElse(null);
-        } else {
-            finalUser = null;
-        }
+        final User finalUser = (email != null && !email.isBlank())
+                ? userRepository.findByEmail(email).orElse(null)
+                : null;
 
         return posts.map(post -> {
-            long likeCount = postLikeRepository.countByPost(post);
-            boolean liked = false;
-            if (finalUser != null) {
-                liked = postLikeRepository.existsByPostAndUser(post, finalUser);
-            }
-            return PostResponse.from(post, (int) likeCount, liked);
+            boolean liked = finalUser != null && postLikeRepository.existsByPostAndUser(post, finalUser);
+            return PostResponse.from(post, liked);
         });
     }
-    /** 댓글순 정렬 전용: commentCount 기준 + 정렬 방향(direction) 반영 */
+
+    /** 댓글순 정렬 게시글 목록 */
     @Transactional(readOnly = true)
     public Page<PostResponse> getAllPostsOrderByCommentCount(String search, Pageable pageable, String direction) {
         Sort.Direction dir = "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
@@ -128,7 +120,7 @@ public class BoardService {
             String q = search.trim();
             posts = postRepository.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(q, q, sorted);
         }
-        // 좋아요 관련 정보는 기본 getAllPosts에만 추가했다고 가정
+
         return posts.map(PostResponse::from);
     }
 
@@ -207,8 +199,7 @@ public class BoardService {
         postRepository.delete(post);
     }
 
-    // ====== 댓글 수 증감 (댓글 생성/삭제에서 호출) ======
-
+    /** 댓글 수 증감 */
     @Transactional
     public void increaseCommentCount(Long postId) {
         int updated = postRepository.changeCommentCount(postId, +1);
@@ -221,11 +212,10 @@ public class BoardService {
         if (updated == 0) throw new PostNotFoundException("해당 게시글이 존재하지 않습니다.");
     }
 
-    // ====== 유니크 조회수 기록 ======
+    /** 유니크 조회수 기록 */
     @Transactional
     public void recordUniqueView(Long postId, String email) {
         if (email == null || email.isBlank()) {
-            // 로그인 안 된 경우, 조회수 기록 안 함 (no-op)
             return;
         }
 
@@ -247,7 +237,7 @@ public class BoardService {
         postRepository.incrementViews(postId);
     }
 
-    /** 게시글 좋아요 토글 */
+    /** 좋아요 토글 + 좋아요 수 업데이트 */
     @Transactional
     public void toggleLike(Long postId, String email) {
         User user = userRepository.findByEmail(email)
@@ -259,13 +249,17 @@ public class BoardService {
         boolean exists = postLikeRepository.existsByPostAndUser(post, user);
         if (exists) {
             postLikeRepository.deleteByPostAndUser(post, user);
+            post.decreaseLikeCount(); // 좋아요 수 감소
         } else {
             postLikeRepository.save(PostLike.builder()
                     .post(post)
                     .user(user)
                     .build());
+            post.increaseLikeCount(); // 좋아요 수 증가
         }
+
+        // 변경된 좋아요 수 저장 (선택: @Transactional에 의해 자동 flush되므로 생략 가능)
+        postRepository.save(post);
     }
 }
-
 

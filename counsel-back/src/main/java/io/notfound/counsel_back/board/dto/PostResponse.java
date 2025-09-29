@@ -25,10 +25,10 @@ public class PostResponse {
     private Boolean liked;      // 로그인 유저의 좋아요 여부
 
     public static PostResponse from(Post post) {
-        return from(post, 0, false);
+        return from(post, false);
     }
 
-    public static PostResponse from(Post post, int likeCount, boolean liked) {
+    public static PostResponse from(Post post, boolean liked) {
         return PostResponse.builder()
                 .postId(post.getId())
                 .authorId(post.getAuthor() != null ? post.getAuthor().getId() : null)
@@ -42,7 +42,7 @@ public class PostResponse {
                 .createdAt(post.getCreatedAt() != null
                         ? post.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
                         : null)
-                .likeCount(likeCount)
+                .likeCount(post.getLikeCount()) // 💡 여기!
                 .liked(liked)
                 .build();
     }

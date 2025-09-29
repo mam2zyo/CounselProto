@@ -41,6 +41,11 @@ public class Post {
     @ColumnDefault("0")
     private int commentCount;
 
+    // ✅ 좋아요 수 필드 추가
+    @Column(nullable = false)
+    @ColumnDefault("0")
+    private int likeCount;
+
     @Builder.Default
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>();
@@ -54,16 +59,15 @@ public class Post {
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
         }
-        this.views = (this.views < 0) ? 0 : this.views;
-        this.commentCount = (this.commentCount < 0) ? 0 : this.commentCount;
+        this.views = Math.max(0, this.views);
+        this.commentCount = Math.max(0, this.commentCount);
+        this.likeCount = Math.max(0, this.likeCount); // ✅ 좋아요 수도 음수 방지
     }
 
-    // (참고) 조회수는 서비스/레포지토리에서 JPQL UPDATE로 원자적으로 증가시킬 예정
     public void incrementViews() {
         this.views++;
     }
 
-    // 댓글 컬렉션 관리만 담당 (commentCount 증감은 서비스에서 DB 원자 연산으로 처리)
     public void addComment(Comment comment) {
         this.comments.add(comment);
         comment.setPost(this);
@@ -93,5 +97,17 @@ public class Post {
     public void update(String title, String content) {
         this.title = title;
         this.content = content;
+    }
+
+    // ✅ 좋아요 수 증가
+    public void increaseLikeCount() {
+        this.likeCount++;
+    }
+
+    // ✅ 좋아요 수 감소 (음수 방지)
+    public void decreaseLikeCount() {
+        if (this.likeCount > 0) {
+            this.likeCount--;
+        }
     }
 }
