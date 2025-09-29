@@ -20,7 +20,7 @@ public class UserProfileService {
     private final UserProfileRepository profileRepository;
 
     // GET: 프로필 조회
-    @Transactional(readOnly = true)
+    @Transactional
     public UserProfileResponseDto getUserProfile(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
