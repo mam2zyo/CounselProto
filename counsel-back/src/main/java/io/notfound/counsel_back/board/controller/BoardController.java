@@ -39,8 +39,12 @@ public class BoardController {
 
     /** 게시글 상세 조회 (조회수 증가 없음) */
     @GetMapping("/{id}")
-    public ResponseEntity<PostResponse> getPost(@PathVariable Long id) {
-        PostResponse response = boardService.getPost(id);
+    public ResponseEntity<PostResponse> getPost(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        final String email = (userDetails != null) ? userDetails.getUsername() : null;
+        PostResponse response = boardService.getPostWithLikeInfo(id, email);
         return ResponseEntity.ok(response);
     }
 
@@ -49,66 +53,40 @@ public class BoardController {
     public ResponseEntity<Void> recordUniqueView(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails
-            ) {
-
+    ) {
         final String email = (userDetails != null) ? userDetails.getUsername() : null;
         boardService.recordUniqueView(id, email);
+
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * 게시글 목록 조회 (검색 + 페이지네이션 + 정렬)
-     *
-     * - 검색:   /api/board?search=키워드
-     * - 정렬:   /api/board?sortBy=latest|views|comments  (기본: latest)
-     * - 방향:   /api/board?direction=asc|desc           (기본: desc)
-     * - 페이지: page, size (Pageable 기본 파라미터)
-     */
+    /** 게시글 목록 조회 (검색 + 페이지네이션 + 좋아요 포함) */
     @GetMapping
     public ResponseEntity<Page<PostResponse>> getAllPosts(
             @RequestParam(required = false) String search,
-            @RequestParam(required = false, defaultValue = "latest") String sortBy,
-            @RequestParam(required = false, defaultValue = "desc") String direction,   // ✅ 정렬 방향 추가
-            @PageableDefault(size = 10) Pageable pageable
-    ) {
-        final String key = (sortBy == null) ? "latest" : sortBy.trim().toLowerCase();
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
-        // ✅ 댓글순은 COUNT/필드 기반 정렬 전용 서비스로 위임 (방향 포함)
-        if ("comments".equals(key)) {
-            Page<PostResponse> responses =
-                    boardService.getAllPostsOrderByCommentCount(search, pageable, direction);
-            return ResponseEntity.ok(responses);
-        }
-
-        // ✅ 최신/조회수는 엔티티 필드 정렬
-        String sortProperty;
-        switch (key) {
-            case "views":
-                sortProperty = "views";       // Post 엔티티의 조회수 필드
-                break;
-            case "latest":
-            default:
-                sortProperty = "createdAt";   // 최신순
-                break;
-        }
-
-        Sort.Direction dir = "asc".equalsIgnoreCase(direction)
-                ? Sort.Direction.ASC : Sort.Direction.DESC;
-
-        Pageable effectivePageable = PageRequest.of(
-                pageable.getPageNumber(),
-                pageable.getPageSize(),
-                Sort.by(dir, sortProperty)
-        );
-
-        Page<PostResponse> responses = boardService.getAllPosts(search, effectivePageable);
-        return ResponseEntity.ok(responses);
+        final String email = (userDetails != null) ? userDetails.getUsername() : null;
+        Page<PostResponse> page = boardService.getAllPosts(search, pageable, email);
+        return ResponseEntity.ok(page);
     }
 
-    /** 게시글 수정 (로그인 필요, 파일 업로드 지원) */
-    @PutMapping(value = "/{id}", consumes = {"multipart/form-data"})
+    /** 댓글순 정렬 게시글 목록 조회 (검색 + 페이지네이션) */
+    @GetMapping("/comments")
+    public ResponseEntity<Page<PostResponse>> getAllPostsOrderByCommentCount(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "desc") String direction,
+            @PageableDefault(size = 10) Pageable pageable) {
+
+        Page<PostResponse> page = boardService.getAllPostsOrderByCommentCount(search, pageable, direction);
+        return ResponseEntity.ok(page);
+    }
+
+    /** 게시글 수정 */
+    @PutMapping(value = "/{postId}", consumes = {"multipart/form-data"})
     public ResponseEntity<PostResponse> updatePost(
-            @PathVariable Long id,
+            @PathVariable Long postId,
             @ModelAttribute PostUpdateRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
@@ -116,11 +94,12 @@ public class BoardController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         final String email = userDetails.getUsername();
-        PostResponse response = boardService.updatePost(id, request, email);
+
+        PostResponse response = boardService.updatePost(postId, request, email);
         return ResponseEntity.ok(response);
     }
 
-    /** 게시글 삭제 (로그인 필요) */
+    /** 게시글 삭제 */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePost(
             @PathVariable Long id,
@@ -130,7 +109,24 @@ public class BoardController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         final String email = userDetails.getUsername();
+
         boardService.deletePost(id, email);
         return ResponseEntity.noContent().build();
+    }
+
+
+    /** 게시글 좋아요 토글 */
+    @PostMapping("/{postId}/like")
+    public ResponseEntity<Void> toggleLike(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String email = userDetails.getUsername();
+
+        boardService.toggleLike(postId, email);
+        return ResponseEntity.ok().build();
     }
 }

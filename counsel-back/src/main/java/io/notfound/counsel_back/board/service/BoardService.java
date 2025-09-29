@@ -5,7 +5,9 @@ import io.notfound.counsel_back.board.dto.PostResponse;
 import io.notfound.counsel_back.board.dto.PostUpdateRequest;
 import io.notfound.counsel_back.board.entity.Attachment;
 import io.notfound.counsel_back.board.entity.Post;
+import io.notfound.counsel_back.board.entity.PostLike;
 import io.notfound.counsel_back.board.entity.PostView;
+import io.notfound.counsel_back.board.repository.PostLikeRepository;
 import io.notfound.counsel_back.board.repository.PostRepository;
 import io.notfound.counsel_back.board.repository.PostViewRepository;
 import io.notfound.counsel_back.common.exception.PostNotFoundException;
@@ -22,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +32,8 @@ public class BoardService {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final S3Service s3Service;
-    private final PostViewRepository postViewRepository; // ✅ 유니크 뷰 저장소
+    private final PostViewRepository postViewRepository; // 유니크 뷰 저장소
+    private final PostLikeRepository postLikeRepository; // 좋아요 저장소
 
     /** 게시글 생성 */
     @Transactional
@@ -56,39 +58,58 @@ public class BoardService {
                         .fileUrl(fileUrl)
                         .post(savedPost)
                         .build();
-                // 연관 편의 메서드 사용 (cascade = PERSIST 가정)
                 savedPost.addAttachment(attachment);
             }
         }
         return PostResponse.from(savedPost);
     }
 
-    /** 상세 조회 (조회수 증가 없음) */
+    /** 게시글 상세 조회 시 좋아요 수, 로그인 유저 좋아요 여부 포함 */
     @Transactional(readOnly = true)
-    public PostResponse getPost(Long id) {
+    public PostResponse getPostWithLikeInfo(Long id, String email) {
         Post post = postRepository.findByIdWithAuthorAndAttachments(id)
-                .orElseThrow(() -> new PostNotFoundException("해당 게시글이 존재하지 않습니다."));
-        return PostResponse.from(post);
+                .orElseThrow(() -> new PostNotFoundException("게시글이 존재하지 않습니다."));
+
+        long likeCount = postLikeRepository.countByPost(post);
+
+        boolean liked = false;
+        if (email != null && !email.isBlank()) {
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user != null) {
+                liked = postLikeRepository.existsByPostAndUser(post, user);
+            }
+        }
+
+        return PostResponse.from(post, (int) likeCount, liked);
     }
 
-    /**
-     * 목록 조회: 검색 + 페이지네이션 (정렬은 컨트롤러에서 Pageable 주입)
-     * - search 가 null/blank 이면 전체 조회
-     * - 아니면 제목/내용에서 대소문자 구분 없이 부분일치 검색
-     */
+    /** 게시글 목록 조회 시 좋아요 정보 포함 */
     @Transactional(readOnly = true)
-    public Page<PostResponse> getAllPosts(String search, Pageable pageable) {
+    public Page<PostResponse> getAllPosts(String search, Pageable pageable, String email) {
         Page<Post> posts;
         if (search == null || search.trim().isEmpty()) {
             posts = postRepository.findAll(pageable);
         } else {
             posts = postRepository.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(
-                    search, search, pageable
-            );
+                    search, search, pageable);
         }
-        return posts.map(PostResponse::from);
-    }
 
+        final User finalUser; // effectively final로 만들어서 람다 내에서 사용 가능하게 함
+        if (email != null && !email.isBlank()) {
+            finalUser = userRepository.findByEmail(email).orElse(null);
+        } else {
+            finalUser = null;
+        }
+
+        return posts.map(post -> {
+            long likeCount = postLikeRepository.countByPost(post);
+            boolean liked = false;
+            if (finalUser != null) {
+                liked = postLikeRepository.existsByPostAndUser(post, finalUser);
+            }
+            return PostResponse.from(post, (int) likeCount, liked);
+        });
+    }
     /** 댓글순 정렬 전용: commentCount 기준 + 정렬 방향(direction) 반영 */
     @Transactional(readOnly = true)
     public Page<PostResponse> getAllPostsOrderByCommentCount(String search, Pageable pageable, String direction) {
@@ -107,6 +128,7 @@ public class BoardService {
             String q = search.trim();
             posts = postRepository.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(q, q, sorted);
         }
+        // 좋아요 관련 정보는 기본 getAllPosts에만 추가했다고 가정
         return posts.map(PostResponse::from);
     }
 
@@ -116,16 +138,13 @@ public class BoardService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new PostNotFoundException("해당 게시글이 존재하지 않습니다."));
 
-        // 권한 확인
         if (post.getAuthor() == null || post.getAuthor().getEmail() == null
                 || !post.getAuthor().getEmail().equals(email)) {
             throw new UnauthorizedActionException("게시글을 수정할 권한이 없습니다.");
         }
 
-        // 본문/제목 수정
         post.update(request.getTitle(), request.getContent());
 
-        // 1) 삭제 요청된 파일 처리
         if (request.getDeletedAttachmentUrls() != null) {
             List<Attachment> attachmentsToDelete = post.getAttachments().stream()
                     .filter(att -> request.getDeletedAttachmentUrls().contains(att.getFileUrl()))
@@ -133,15 +152,14 @@ public class BoardService {
 
             for (Attachment attachment : attachmentsToDelete) {
                 try {
-                    s3Service.deleteFile(attachment.getFileUrl()); // S3에서 삭제
+                    s3Service.deleteFile(attachment.getFileUrl());
                 } catch (Exception ex) {
                     System.err.println("[WARN] S3 파일 삭제 실패: " + attachment.getFileUrl() + " - " + ex.getMessage());
                 }
-                post.removeAttachment(attachment); // 연관관계 제거 (orphanRemoval=true 가정)
+                post.removeAttachment(attachment);
             }
         }
 
-        // 2) 새로 추가된 파일 처리
         if (request.getNewAttachments() != null) {
             for (MultipartFile file : request.getNewAttachments()) {
                 String fileUrl = s3Service.uploadFile(file);
@@ -153,7 +171,7 @@ public class BoardService {
                 post.addAttachment(attachment);
             }
         }
-        // dirty checking 으로 업데이트 반영
+
         return PostResponse.from(post);
     }
 
@@ -163,20 +181,17 @@ public class BoardService {
         Post post = postRepository.findById(id)
                 .orElseThrow(() -> new PostNotFoundException("해당 게시글이 존재하지 않습니다."));
 
-        // 권한 확인
         if (post.getAuthor() == null || post.getAuthor().getEmail() == null
                 || !email.equals(post.getAuthor().getEmail())) {
             throw new UnauthorizedActionException("게시글을 삭제할 권한이 없습니다.");
         }
 
-        // 1) 유니크 뷰 기록 먼저 삭제 (FK 충돌 방지)
         try {
             postViewRepository.deleteByPostId(id);
         } catch (Exception ex) {
             System.err.println("[WARN] PostView 삭제 중 문제 발생(postId=" + id + "): " + ex.getMessage());
         }
 
-        // 2) S3 파일 삭제 (실패해도 계속 진행)
         if (post.getAttachments() != null) {
             for (Attachment attachment : post.getAttachments()) {
                 String url = attachment.getFileUrl();
@@ -189,7 +204,6 @@ public class BoardService {
             }
         }
 
-        // 3) 게시글 삭제 (attachments/comments 는 cascade + orphanRemoval 가정)
         postRepository.delete(post);
     }
 
@@ -208,11 +222,11 @@ public class BoardService {
     }
 
     // ====== 유니크 조회수 기록 ======
-    // 로그인 사용자만 카운트 (비로그인은 무시)
     @Transactional
     public void recordUniqueView(Long postId, String email) {
         if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("이메일 값이 비어있습니다.");
+            // 로그인 안 된 경우, 조회수 기록 안 함 (no-op)
+            return;
         }
 
         Post post = postRepository.findById(postId)
@@ -221,11 +235,9 @@ public class BoardService {
         User viewer = userRepository.findByEmail(email)
                 .orElseThrow(() -> new PostNotFoundException("사용자를 찾을 수 없습니다: " + email));
 
-        // 이미 본 사용자면 증가하지 않음
         boolean seen = postViewRepository.existsByPostIdAndViewerUser_Id(postId, viewer.getId());
         if (seen) return;
 
-        // 처음 보는 사용자 → 뷰 기록 저장 후 카운트 +1
         PostView pv = PostView.builder()
                 .post(post)
                 .viewerUser(viewer)
@@ -234,4 +246,26 @@ public class BoardService {
 
         postRepository.incrementViews(postId);
     }
+
+    /** 게시글 좋아요 토글 */
+    @Transactional
+    public void toggleLike(Long postId, String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new PostNotFoundException("사용자를 찾을 수 없습니다: " + email));
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new PostNotFoundException("게시글이 존재하지 않습니다: " + postId));
+
+        boolean exists = postLikeRepository.existsByPostAndUser(post, user);
+        if (exists) {
+            postLikeRepository.deleteByPostAndUser(post, user);
+        } else {
+            postLikeRepository.save(PostLike.builder()
+                    .post(post)
+                    .user(user)
+                    .build());
+        }
+    }
 }
+
+
