@@ -1,5 +1,6 @@
 package io.notfound.counsel_back.user.service;
 
+import io.notfound.counsel_back.user.dto.UserProfileRequestDto;
 import io.notfound.counsel_back.user.dto.UserProfileResponseDto;
 import io.notfound.counsel_back.user.entity.User;
 import io.notfound.counsel_back.user.entity.UserProfile;
@@ -9,50 +10,82 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
+
 @Service
 @RequiredArgsConstructor
 public class UserProfileService {
 
-    private final UserProfileRepository userProfileRepository;
     private final UserRepository userRepository;
+    private final UserProfileRepository profileRepository;
 
-    // 프로필 조회
-    @Transactional(readOnly = true)
-    public UserProfileResponseDto getProfile(Long userId) {
-        UserProfile profile = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("UserProfile not found"));
+    // GET: 프로필 조회
+    @Transactional
+    public UserProfileResponseDto getUserProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
+        UserProfile profile = profileRepository.findByUser(user)
+                .orElseGet(() -> {
+                    // 프로필 자동 생성 + 기본값
+                    UserProfile newProfile = UserProfile.builder()
+                            .user(user)
+                            .gender("선택안함")
+                            .age(0)
+                            .interests("")
+                            .concern("")
+                            .build();
+                    return profileRepository.save(newProfile);
+                });
+
+        return toDto(profile, user);
+    }
+
+    // PUT: 프로필 업데이트
+    @Transactional
+    public UserProfileResponseDto updateUserProfile(Long userId, UserProfileRequestDto requestDto) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        UserProfile profile = profileRepository.findByUser(user)
+                .orElseGet(() -> {
+                    // 프로필 자동 생성 + 기본값
+                    UserProfile newProfile = UserProfile.builder()
+                            .user(user)
+                            .gender("선택안함")
+                            .age(0)
+                            .interests("")
+                            .concern("")
+                            .build();
+                    return profileRepository.save(newProfile);
+                });
+
+        // 엔티티 값 업데이트
+        profile.updateProfile(
+                requestDto.getGender(),
+                requestDto.getAge(),
+                requestDto.getInterests(),
+                requestDto.getConcern()
+        );
+
+        // JPA에서 자동 갱신되지만 안전하게 save 호출
+        profileRepository.save(profile);
+
+        return toDto(profile, user);
+    }
+
+    // DTO 변환 헬퍼
+    private UserProfileResponseDto toDto(UserProfile profile, User user) {
         return UserProfileResponseDto.builder()
                 .gender(profile.getGender())
                 .age(profile.getAge())
                 .interests(profile.getInterests())
                 .concern(profile.getConcern())
+                .accessUntil(
+                        user.getAccessUntil() != null
+                                ? user.getAccessUntil().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                                : null
+                )
                 .build();
-    }
-
-    // 프로필 수정
-    @Transactional
-    public void updateProfile(Long userId, String gender, Integer age, String interests, String concern) {
-        UserProfile profile = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("UserProfile not found"));
-
-        profile.updateProfile(gender, age, interests, concern);
-    }
-
-    // 회원가입 후 최초 프로필 생성
-    @Transactional
-    public void createProfile(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        UserProfile profile = UserProfile.builder()
-                .user(user)
-                .gender(null)
-                .age(null)
-                .interests(null)
-                .concern(null)
-                .build();
-
-        userProfileRepository.save(profile);
     }
 }
