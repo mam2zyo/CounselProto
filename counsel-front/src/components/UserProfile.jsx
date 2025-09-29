@@ -1,63 +1,82 @@
 // src/components/UserProfile.jsx
 import { useEffect, useState } from "react";
 import { getUserProfile, updateUserProfile } from "../api/user";
+import { useAuth } from "../contexts/AuthContext";
 
-const UserProfile = ({ userId }) => {
+const UserProfile = () => {
+  const { user } = useAuth();
+  const userId = user?.id;
+
+  // 프론트 state는 기존 UI 이름 그대로
   const [profile, setProfile] = useState({
     성별: "",
     나이: "",
     관심사: "",
     고민: "",
+    결제종료일: "",
   });
   const [editMode, setEditMode] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // 프로필 조회
+  const fetchProfile = async () => {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      const data = await getUserProfile(userId);
+
+      setProfile({
+        성별: data.gender || "선택안함",
+        나이: data.age || "",
+        관심사: data.interests || "",
+        고민: data.concern || "",
+        결제종료일: data.accessUntil
+          ? new Date(data.accessUntil).toLocaleDateString()
+          : "없음",
+      });
+    } catch (err) {
+      console.error("프로필 로딩 실패", err);
+      alert("프로필 불러오기 중 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const data = await getUserProfile(userId);
-
-        // 백엔드에서 gender가 그냥 문자열이므로 그대로 사용
-        setProfile({
-          성별: data.gender || "",
-          나이: data.age || "",
-          관심사: data.interests || "",
-          고민: data.concern || "",
-        });
-      } catch (err) {
-        console.error(err.response?.data || err.message);
-        alert("프로필을 불러오는 중 오류가 발생했습니다.");
-      }
-    };
-
     fetchProfile();
   }, [userId]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  if (!userId) return <div>로그인 후 이용 가능합니다.</div>;
+  if (loading) return <div>로딩 중...</div>;
 
-    // 나이 음수 방지
-    if (name === "나이" && Number(value) < 0) return;
-
-    setProfile({ ...profile, [name]: value });
-  };
-
-  const handleUpdate = async () => {
+  // 저장 처리
+  const handleSave = async () => {
     try {
       const updateData = {
-        gender: profile.성별, // 그대로 보내기
-        age: Number(profile.나이), // 숫자로 변환
+        gender: profile.성별,
+        age: Number(profile.나이),
         interests: profile.관심사,
         concern: profile.고민,
       };
 
-      const res = await updateUserProfile(userId, updateData);
-      console.log(res); // 서버 응답 확인
+      await updateUserProfile(userId, updateData);
+
+      // 최신 데이터 다시 가져오기
+      await fetchProfile();
+
       setEditMode(false);
       alert("프로필이 업데이트되었습니다!");
     } catch (err) {
-      console.error(err.response?.data || err.message);
-      alert("저장 중 오류가 발생했습니다.");
+      console.error("프로필 저장 실패", err);
+      alert("저장 실패");
     }
+  };
+
+  // 값 변경 처리
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === "나이" && Number(value) < 0) return;
+    setProfile({ ...profile, [name]: value });
   };
 
   return (
@@ -121,8 +140,14 @@ const UserProfile = ({ userId }) => {
             className="input input-bordered w-full"
           />
 
-          <button className="btn btn-primary mt-2" onClick={handleUpdate}>
+          <button className="btn btn-primary mt-2" onClick={handleSave}>
             저장
+          </button>
+          <button
+            className="btn btn-secondary mt-2 ml-2"
+            onClick={() => setEditMode(false)}
+          >
+            취소
           </button>
         </div>
       ) : (
@@ -131,6 +156,8 @@ const UserProfile = ({ userId }) => {
           <p>나이: {profile.나이}</p>
           <p>관심사: {profile.관심사}</p>
           <p>고민: {profile.고민}</p>
+          <p>결제 종료일: {profile.결제종료일}</p>
+
           <button
             className="btn btn-secondary mt-2"
             onClick={() => setEditMode(true)}
