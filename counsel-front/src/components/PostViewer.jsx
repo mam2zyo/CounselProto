@@ -1,10 +1,17 @@
-// src/components/PostViewer.jsx test
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { FiEye, FiMessageSquare } from "react-icons/fi";
 import { FaUserCircle } from "react-icons/fa";
 
-export default function PostViewer({ post, isAuthor, onEdit, onDelete }) {
+export default function PostViewer({
+  post,
+  isAuthor,
+  onEdit,
+  onDelete,
+  liked,
+  likeCount,
+  onToggleLike,
+}) {
   const navigate = useNavigate();
 
   const formattedDate = post.createdAt
@@ -23,16 +30,12 @@ export default function PostViewer({ post, isAuthor, onEdit, onDelete }) {
 
   return (
     <div className="bg-white shadow-md rounded-lg p-6 md:p-8">
-      {/* --- 헤더 영역 --- */}
       <div className="mb-6">
-        {/* 제목을 최상단에 배치 */}
         <h1 className="text-3xl md:text-4xl font-bold break-words mb-4">
           {post.title}
         </h1>
 
-        {/* 작성자(좌)와 통계(우)를 한 줄에 배치 */}
         <div className="flex items-center justify-between">
-          {/* 작성자 정보 */}
           <div className="flex items-center gap-3">
             <FaUserCircle className="text-gray-400" size={40} />
             <div>
@@ -41,7 +44,6 @@ export default function PostViewer({ post, isAuthor, onEdit, onDelete }) {
             </div>
           </div>
 
-          {/* 조회수 및 댓글 수 아이콘 (우측으로 이동) */}
           <div className="flex items-center gap-4 text-sm text-gray-500">
             <span className="flex items-center gap-1.5">
               <FiEye /> {post.viewCount ?? 0}
@@ -53,15 +55,12 @@ export default function PostViewer({ post, isAuthor, onEdit, onDelete }) {
         </div>
       </div>
 
-      {/* 구분선 */}
       <hr className="my-6 border-gray-200" />
 
-      {/* --- 본문 영역 --- */}
       <div className="mb-8 min-h-[200px] text-gray-800 leading-relaxed break-words whitespace-pre-wrap">
         {post.content}
       </div>
 
-      {/* --- 첨부파일 영역 --- */}
       {post.attachmentUrls && post.attachmentUrls.length > 0 && (
         <div className="mb-8 p-4 bg-gray-50 rounded-md border">
           <h3 className="text-md font-semibold mb-3">첨부파일</h3>
@@ -82,26 +81,28 @@ export default function PostViewer({ post, isAuthor, onEdit, onDelete }) {
         </div>
       )}
 
-      {/* --- 하단 액션 버튼 영역 --- */}
-      <div className="flex justify-end gap-2 mt-10">
+      <div className="flex justify-end gap-2 mt-10 items-center">
         <button
-          onClick={() => navigate("/board")}
-          className="btn btn-sm sm:btn-md"
+          onClick={onToggleLike}
+          className={`btn btn-sm sm:btn-md ${
+            liked ? "btn-primary" : "btn-outline"
+          }`}
+          aria-pressed={liked}
+          aria-label={liked ? "좋아요 취소" : "좋아요"}
         >
+          {liked ? "❤️ 좋아요" : "🤍 좋아요"} {likeCount ?? 0}
+        </button>
+
+        <button onClick={() => navigate("/board")} className="btn btn-sm sm:btn-md">
           목록
         </button>
+
         {isAuthor && (
           <>
-            <button
-              onClick={onEdit}
-              className="btn btn-outline btn-sm sm:btn-md"
-            >
+            <button onClick={onEdit} className="btn btn-outline btn-sm sm:btn-md">
               수정
             </button>
-            <button
-              onClick={onDelete}
-              className="btn btn-error btn-sm sm:btn-md"
-            >
+            <button onClick={onDelete} className="btn btn-error btn-sm sm:btn-md">
               삭제
             </button>
           </>
