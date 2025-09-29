@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +36,9 @@ public class BoardService {
     private final PostViewRepository postViewRepository;
     private final PostLikeRepository postLikeRepository;
 
-    /** 게시글 생성 */
+    /**
+     * 게시글 생성
+     */
     @Transactional
     public PostResponse createPost(PostRequest request, String email) {
         User user = userRepository.findByEmail(email)
@@ -64,7 +67,9 @@ public class BoardService {
         return PostResponse.from(savedPost);
     }
 
-    /** 게시글 상세 조회 */
+    /**
+     * 게시글 상세 조회
+     */
     @Transactional(readOnly = true)
     public PostResponse getPostWithLikeInfo(Long id, String email) {
         Post post = postRepository.findByIdWithAuthorAndAttachments(id)
@@ -81,7 +86,9 @@ public class BoardService {
         return PostResponse.from(post, liked);
     }
 
-    /** 게시글 목록 조회 */
+    /**
+     * 게시글 목록 조회
+     */
     @Transactional(readOnly = true)
     public Page<PostResponse> getAllPosts(String search, Pageable pageable, String email) {
         Page<Post> posts;
@@ -102,7 +109,9 @@ public class BoardService {
         });
     }
 
-    /** 댓글순 정렬 게시글 목록 */
+    /**
+     * 댓글순 정렬 게시글 목록
+     */
     @Transactional(readOnly = true)
     public Page<PostResponse> getAllPostsOrderByCommentCount(String search, Pageable pageable, String direction) {
         Sort.Direction dir = "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
@@ -124,7 +133,9 @@ public class BoardService {
         return posts.map(PostResponse::from);
     }
 
-    /** 게시글 수정 */
+    /**
+     * 게시글 수정
+     */
     @Transactional
     public PostResponse updatePost(Long postId, PostUpdateRequest request, String email) {
         Post post = postRepository.findById(postId)
@@ -167,7 +178,9 @@ public class BoardService {
         return PostResponse.from(post);
     }
 
-    /** 게시글 삭제 */
+    /**
+     * 게시글 삭제
+     */
     @Transactional
     public void deletePost(Long id, String email) {
         Post post = postRepository.findById(id)
@@ -199,7 +212,9 @@ public class BoardService {
         postRepository.delete(post);
     }
 
-    /** 댓글 수 증감 */
+    /**
+     * 댓글 수 증감
+     */
     @Transactional
     public void increaseCommentCount(Long postId) {
         int updated = postRepository.changeCommentCount(postId, +1);
@@ -212,7 +227,9 @@ public class BoardService {
         if (updated == 0) throw new PostNotFoundException("해당 게시글이 존재하지 않습니다.");
     }
 
-    /** 유니크 조회수 기록 */
+    /**
+     * 유니크 조회수 기록
+     */
     @Transactional
     public void recordUniqueView(Long postId, String email) {
         if (email == null || email.isBlank()) {
@@ -237,7 +254,9 @@ public class BoardService {
         postRepository.incrementViews(postId);
     }
 
-    /** 좋아요 토글 + 좋아요 수 업데이트 */
+    /**
+     * 게시글 좋아요 토글
+     */
     @Transactional
     public void toggleLike(Long postId, String email) {
         User user = userRepository.findByEmail(email)
@@ -258,8 +277,27 @@ public class BoardService {
             post.increaseLikeCount(); // 좋아요 수 증가
         }
 
-        // 변경된 좋아요 수 저장 (선택: @Transactional에 의해 자동 flush되므로 생략 가능)
-        postRepository.save(post);
+        postRepository.save(post);  // 변경된 좋아요 수 저장
+    }
+
+
+    /** 게시글 좋아요 상태 가져오기 */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getLikeStatus(Long postId, String email) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new PostNotFoundException("게시글이 존재하지 않습니다: " + postId));
+
+        long likeCount = postLikeRepository.countByPost(post);
+
+        boolean liked = false;
+        if (email != null && !email.isBlank()) {
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user != null) {
+                liked = postLikeRepository.existsByPostAndUser(post, user);
+            }
+        }
+
+        return Map.of("liked", liked, "likeCount", (int) likeCount);
     }
 }
 

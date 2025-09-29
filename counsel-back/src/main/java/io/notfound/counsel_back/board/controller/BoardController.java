@@ -16,6 +16,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/board")
@@ -56,7 +58,6 @@ public class BoardController {
     ) {
         final String email = (userDetails != null) ? userDetails.getUsername() : null;
         boardService.recordUniqueView(id, email);
-
         return ResponseEntity.ok().build();
     }
 
@@ -114,7 +115,6 @@ public class BoardController {
         return ResponseEntity.noContent().build();
     }
 
-
     /** 게시글 좋아요 토글 */
     @PostMapping("/{postId}/like")
     public ResponseEntity<Void> toggleLike(
@@ -128,5 +128,16 @@ public class BoardController {
 
         boardService.toggleLike(postId, email);
         return ResponseEntity.ok().build();
+    }
+
+    /** 게시글 좋아요 상태 조회 */
+    @GetMapping("/{postId}/like")
+    public ResponseEntity<Map<String, Object>> getLikeStatus(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        final String email = (userDetails != null) ? userDetails.getUsername() : null;
+        Map<String, Object> likeStatus = boardService.getLikeStatus(postId, email);
+        return ResponseEntity.ok(likeStatus);
     }
 }

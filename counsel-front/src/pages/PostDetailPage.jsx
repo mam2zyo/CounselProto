@@ -37,6 +37,7 @@ export default function PostDetailPage() {
 
   const initiatedFetchPostId = useRef(null);
 
+  // Fetch Post and Record View
   useEffect(() => {
     if (isNewPost) return;
 
@@ -79,8 +80,35 @@ export default function PostDetailPage() {
     };
 
     fetchPostAndRecordView();
+
+    // **Polling: Like status periodic fetch**
+    let pollingInterval = null;
+
+    if (user) {
+      const fetchLikeStatusPeriodically = async () => {
+        try {
+          const likeResponse = await getLikeStatus(postId);
+          setLiked(likeResponse.data.liked);
+          setPost(prevPost => ({
+            ...prevPost,
+            likeCount: likeResponse.data.likeCount,
+          }));
+        } catch {
+          // Fail silently or log to console
+        }
+      };
+
+      fetchLikeStatusPeriodically(); // Initial fetch
+
+      pollingInterval = setInterval(fetchLikeStatusPeriodically, 5000); // Poll every 5 seconds
+    }
+
+    return () => {
+      if (pollingInterval) clearInterval(pollingInterval); // Cleanup on unmount
+    };
   }, [postId, isNewPost, navigate, user]);
 
+  // Save post (create/update)
   const handleSave = async (editedPost, newFiles, deletedUrls) => {
     const formData = new FormData();
     formData.append("title", editedPost.title);
@@ -106,6 +134,7 @@ export default function PostDetailPage() {
     }
   };
 
+  // Delete post
   const handleDelete = async () => {
     if (window.confirm("정말 이 게시글을 삭제하시겠습니까?")) {
       try {
@@ -118,6 +147,7 @@ export default function PostDetailPage() {
     }
   };
 
+  // Cancel editing
   const handleCancel = () => {
     if (isNewPost) {
       navigate("/board");
@@ -126,7 +156,7 @@ export default function PostDetailPage() {
     }
   };
 
-  // 여기 좋아요 토글 함수 수정됨
+  // Like toggle
   const handleToggleLike = async () => {
     if (!user) {
       alert("로그인이 필요합니다.");
