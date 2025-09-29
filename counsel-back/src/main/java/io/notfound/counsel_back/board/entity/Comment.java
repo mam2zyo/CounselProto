@@ -3,6 +3,7 @@ package io.notfound.counsel_back.board.entity;
 import io.notfound.counsel_back.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDateTime;
 
@@ -28,6 +29,10 @@ public class Comment {
     @JoinColumn(name = "post_id")
     private Post post;
 
+    @Column(nullable = false)
+    @ColumnDefault("false") // 기본값은 false
+    private boolean isBlinded = false;
+
     private LocalDateTime createdAt;
 
     // Setter를 외부에서 직접 호출하지 못하도록 package-private으로 변경
@@ -44,5 +49,11 @@ public class Comment {
     // 내용 수정을 위한 메서드
     public void update(String content) {
         this.content = content;
+    }
+
+    // 블라인드 상태를 변경하는 메서드 추가
+    public void blind() {
+        this.isBlinded = true;
+        this.content = "관리자에 의해 블라인드 처리된 댓글입니다.";
     }
 }

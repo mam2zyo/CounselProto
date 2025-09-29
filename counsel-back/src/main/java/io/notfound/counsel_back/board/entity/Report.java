@@ -4,6 +4,8 @@ import io.notfound.counsel_back.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @Builder
@@ -25,6 +27,25 @@ public class Report {
 
     private String reason;
 
+    private String justification; // AI의 판단 근거 저장 필드
+
     @Enumerated(EnumType.STRING)
     private ReportStatus status;
+
+    private LocalDateTime createdAt;
+    @PrePersist
+    public void createdAt() {
+        this.createdAt = LocalDateTime.now();
+    }
+
+    public void updateStatus(ReportStatus newStatus) {
+        this.status = newStatus;
+    }
+
+    // 판단 근거를 업데이트하는 메서드 추가
+    public void updateJustification(String justification) {
+        this.justification = justification;
+    }
+
+
 }
