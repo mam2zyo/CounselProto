@@ -1,101 +1,93 @@
 // src/pages/PostDetailPage.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-// import { useAuth } from "../contexts/AuthContext";  // 어디서 사용하는지 확인 필요
-import { getPost, deletePost, createPost, updatePost } from "../api/board";
+import {
+  getPost,
+  deletePost,
+  createPost,
+  updatePost,
+  recordView,
+} from "../api/board";
 import CommentsBox from "../components/CommentsBox";
+import PostViewer from "../components/PostViewer"; // ✅ Viewer 임포트
+import PostEditor from "../components/PostEditor"; // ✅ Editor 임포트
+import { useAuth } from "../contexts/AuthContext";
 
-// 이 페이지는 새 글 작성(/board/new)과 상세 보기/수정(/board/:postId)을 모두 처리합니다.
 export default function PostDetailPage() {
-  const { postId } = useParams(); // URL에서 postId 가져오기. 'new'일 수도 있음
+  const { postId } = useParams();
   const isNewPost = postId === "new";
   const navigate = useNavigate();
-  // const { user } = useAuth(); // 현재 로그인된 사용자 정보 (id, userName 등 포함 가정)
-
-  // Form State
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [attachments, setAttachments] = useState([]); // 기존 첨부파일 목록
-  const [newFiles, setNewFiles] = useState([]); // 새로 추가할 파일
-  const [deletedUrls, setDeletedUrls] = useState([]); // 삭제할 첨부파일 URL
-
+  const { user } = useAuth();
+  // 모드 관리 상태 추가
+  const [isEditing, setIsEditing] = useState(isNewPost);
+  // 게시글 데이터 전체를 하나의 상태로 관리
+  const [post, setPost] = useState({
+    title: "",
+    content: "",
+    attachmentUrls: [],
+    authorId: null,
+  });
+  const [isAuthor, setIsAuthor] = useState(false);
+  const [isLoading, setIsLoading] = useState(!isNewPost);
+  const initiatedFetchPostId = useRef(null);
   useEffect(() => {
-    if (!isNewPost) {
-      fetchPost();
-    }
-  }, [postId]);
+    if (isNewPost) return;
 
-  const fetchPost = async () => {
-    try {
-      const res = await getPost(postId);
-      const postData = res.data;
-      setTitle(postData.title);
-      setContent(postData.content);
-      setAttachments(postData.attachmentUrls || []);
-    } catch (error) {
-      console.error("게시글 조회 실패", error);
-      navigate("/board");
-    }
-  };
+    if (initiatedFetchPostId.current === postId) return;
+    initiatedFetchPostId.current = postId;
 
-  // const fetchPostAndComments = async () => {
-  //   try {
-  //     const [postRes, commentsRes] = await Promise.all([
-  //       getPost(postId),
-  //       getCommentsByPostId(postId),
-  //     ]);
-  //     const postData = postRes.data;
-  //     setTitle(postData.title);
-  //     setContent(postData.content);
-  //     setAttachments(postData.attachmentUrls || []);
-  //     setComments(commentsRes.data || []);
-  //   } catch (error) {
-  //     console.error("게시글 또는 댓글 조회 실패", error);
-  //     navigate("/board");
-  //   }
-  // };
+    const fetchPostAndRecordView = async () => {
+      try {
+        const response = await getPost(postId);
+        const postData = response.data;
+        setPost(postData); // 받아온 데이터로 post 상태 업데이트
 
-  const handleFileChange = (e) => {
-    setNewFiles(Array.from(e.target.files));
-  };
+        if (user && postData.authorId === user.id) {
+          setIsAuthor(true);
+        }
+        recordView(postId).catch((err) =>
+          console.warn("조회수 기록 실패", err)
+        );
+      } catch (error) {
+        console.error("게시글 조회 실패", error);
+        alert("게시글을 불러오는 데 실패했습니다.");
+        navigate("/board");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const handleDeleteAttachment = (url) => {
-    setAttachments(attachments.filter((att) => att !== url));
-    setDeletedUrls([...deletedUrls, url]);
-  };
+    fetchPostAndRecordView();
+  }, [postId, isNewPost, navigate, user]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Editor로부터 데이터를 받아 API 요청을 보내는 핸들러
+  const handleSave = async (editedPost, newFiles, deletedUrls) => {
     const formData = new FormData();
-    formData.append("title", title);
-    formData.append("content", content);
-
-    // 백엔드 PostRequest, PostUpdateRequest DTO의 필드명과 일치 필요
-    // create: attachments, update: newAttachments
-    const filesKey = isNewPost ? "attachments" : "newAttachments";
-    newFiles.forEach((file) => formData.append(filesKey, file));
-
-    // 수정시만 제공
-    if (!isNewPost) {
-      deletedUrls.forEach((url) =>
-        formData.append("deletedAttachmentUrls", url)
-      );
-    }
+    formData.append("title", editedPost.title);
+    formData.append("content", editedPost.content);
 
     try {
       if (isNewPost) {
+        newFiles.forEach((file) => formData.append("attachments", file));
         await createPost(formData);
+        navigate("/board"); // 새 글 작성 성공 시 목록으로 이동
       } else {
-        await updatePost(postId, formData);
+        newFiles.forEach((file) => formData.append("newAttachments", file));
+        deletedUrls.forEach((url) =>
+          formData.append("deletedAttachmentUrls", url)
+        );
+        const response = await updatePost(postId, formData);
+
+        // 수정 성공 시, 서버로부터 받은 최신 데이터로 상태를 업데이트하고 읽기 모드로 전환
+        setPost(response.data);
+        setIsEditing(false);
       }
-      navigate("/board");
     } catch (error) {
       console.error("게시글 저장 실패", error);
       alert("게시글 저장에 실패했습니다.");
     }
   };
-
-  const handleDeletePost = async () => {
+  const handleDelete = async () => {
     if (window.confirm("정말 이 게시글을 삭제하시겠습니까?")) {
       try {
         await deletePost(postId);
@@ -106,208 +98,247 @@ export default function PostDetailPage() {
       }
     }
   };
-
+  // 편집 취소 핸들러
+  const handleCancel = () => {
+    if (isNewPost) {
+      navigate("/board"); // 새 글 작성 중 취소는 목록으로
+    } else {
+      setIsEditing(false); // 수정 중 취소는 읽기 모드로
+    }
+  };
+  if (isLoading) {
+    return <div className="p-8">게시글을 불러오는 중입니다...</div>;
+  }
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">
-        {isNewPost ? "새 글 작성" : "게시글"}
-      </h1>
+      {/* isEditing 상태에 따라 Viewer 또는 Editor를 조건부 렌더링 */}
+      {isEditing ? (
+        <PostEditor
+          initialPost={{
+            // Editor에 초기 데이터 전달
+            title: post.title,
+            content: post.content,
+            attachments: post.attachmentUrls,
+          }}
+          onSave={handleSave}
+          onCancel={handleCancel}
+          isNewPost={isNewPost}
+        />
+      ) : (
+        <PostViewer
+          post={post}
+          isAuthor={isAuthor}
+          onEdit={() => setIsEditing(true)} // "수정" 버튼 누르면 편집 모드로 전환
+          onDelete={handleDelete}
+        />
+      )}
 
-      {/* 게시글 작성/수정 폼 */}
-      <form onSubmit={handleSubmit} className="space-y-4 mb-12">
-        <div>
-          <label className="label">제목</label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="input input-bordered w-full"
-            required
-          />
-        </div>
-        <div>
-          <label className="label">내용</label>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="textarea textarea-bordered w-full h-40"
-            required
-          />
-        </div>
-        <div>
-          <label className="label">첨부파일</label>
-          {/* 기존 파일 목록 */}
-          <div className="mb-2">
-            {attachments.map((url) => (
-              <div key={url} className="flex items-center gap-2">
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="link link-primary"
-                >
-                  {url.split("/").pop()}
-                </a>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteAttachment(url)}
-                  className="btn btn-xs btn-error"
-                >
-                  삭제
-                </button>
-              </div>
-            ))}
-          </div>
-          {/* 새 파일 선택 */}
-          <input
-            type="file"
-            multiple
-            onChange={handleFileChange}
-            className="file-input file-input-bordered w-full"
-          />
-        </div>
-        <div className="flex gap-2">
-          <button type="submit" className="btn btn-primary">
-            {isNewPost ? "작성 완료" : "수정 완료"}
-          </button>
-          {!isNewPost && (
-            <button
-              type="button"
-              onClick={handleDeletePost}
-              className="btn btn-error"
-            >
-              삭제
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => navigate("/board")}
-            className="btn"
-          >
-            목록으로
-          </button>
-        </div>
-      </form>
-
-      {/* 댓글 섹션 (새 글 작성이 아닐 때만 표시) */}
+      {/* 댓글은 모드와 상관없이 항상 표시 */}
       {!isNewPost && <CommentsBox postId={postId} />}
     </div>
   );
-
-  // return (
-  //   <div className="p-8 max-w-4xl mx-auto">
-  //     <h1 className="text-3xl font-bold mb-6">
-  //       {isNewPost ? "새 글 작성" : "게시글"}
-  //     </h1>
-
-  //     {/* 게시글 작성/수정 폼 */}
-  //     <form onSubmit={handleSubmit} className="space-y-4 mb-12">
-  //       <div>
-  //         <label className="label">제목</label>
-  //         <input
-  //           type="text"
-  //           value={title}
-  //           onChange={(e) => setTitle(e.target.value)}
-  //           className="input input-bordered w-full"
-  //           required
-  //         />
-  //       </div>
-  //       <div>
-  //         <label className="label">내용</label>
-  //         <textarea
-  //           value={content}
-  //           onChange={(e) => setContent(e.target.value)}
-  //           className="textarea textarea-bordered w-full h-40"
-  //           required
-  //         />
-  //       </div>
-  //       <div>
-  //         <label className="label">첨부파일</label>
-  //         {/* 기존 파일 목록 */}
-  //         <div className="mb-2">
-  //           {attachments.map((url) => (
-  //             <div key={url} className="flex items-center gap-2">
-  //               <a
-  //                 href={url}
-  //                 target="_blank"
-  //                 rel="noopener noreferrer"
-  //                 className="link link-primary"
-  //               >
-  //                 {url.split("/").pop()}
-  //               </a>
-  //               <button
-  //                 type="button"
-  //                 onClick={() => handleDeleteAttachment(url)}
-  //                 className="btn btn-xs btn-error"
-  //               >
-  //                 삭제
-  //               </button>
-  //             </div>
-  //           ))}
-  //         </div>
-  //         {/* 새 파일 선택 */}
-  //         <input
-  //           type="file"
-  //           multiple
-  //           onChange={handleFileChange}
-  //           className="file-input file-input-bordered w-full"
-  //         />
-  //       </div>
-  //       <div className="flex gap-2">
-  //         <button type="submit" className="btn btn-primary">
-  //           {isNewPost ? "작성 완료" : "수정 완료"}
-  //         </button>
-  //         {!isNewPost && (
-  //           <button
-  //             type="button"
-  //             onClick={handleDeletePost}
-  //             className="btn btn-error"
-  //           >
-  //             삭제
-  //           </button>
-  //         )}
-  //         <button
-  //           type="button"
-  //           onClick={() => navigate("/board")}
-  //           className="btn"
-  //         >
-  //           목록으로
-  //         </button>
-  //       </div>
-  //     </form>
-
-  //     {/* 댓글 섹션 (새 글 작성이 아닐 때만 표시) */}
-  //     {!isNewPost && (
-  //       <div>
-  //         <h2 className="text-2xl font-bold mb-4">댓글</h2>
-  //         {/* 댓글 목록 */}
-  //         <div className="space-y-3 mb-6">
-  //           {comments.map((comment) => (
-  //             <div key={comment.id} className="p-3 border rounded bg-base-200">
-  //               <p className="font-semibold">{comment.writerName}</p>
-  //               <p>{comment.content}</p>
-  //               <p className="text-xs text-gray-500">
-  //                 {new Date(comment.createdAt).toLocaleString()}
-  //               </p>
-  //               {/* 현재 유저가 댓글 작성자일 경우 수정/삭제 버튼 표시 */}
-  //             </div>
-  //           ))}
-  //         </div>
-  //         {/* 댓글 작성 폼 */}
-  //         <form onSubmit={handleCommentSubmit} className="flex gap-2">
-  //           <input
-  //             type="text"
-  //             value={newComment}
-  //             onChange={(e) => setNewComment(e.target.value)}
-  //             placeholder="댓글을 입력하세요"
-  //             className="input input-bordered flex-grow"
-  //           />
-  //           <button type="submit" className="btn btn-secondary">
-  //             등록
-  //           </button>
-  //         </form>
-  //       </div>
-  //     )}
-  //   </div>
-  // );
 }
+
+// // src/pages/PostDetailPage.jsx
+// import { useState, useEffect, useRef } from "react";
+// import { useParams, useNavigate } from "react-router-dom";
+// import { useAuth } from "../contexts/AuthContext";
+// import CommentsBox from "../components/CommentsBox";
+// import AttachmentBox from "../components/AttachmentBox";
+// import {
+//   getPost,
+//   deletePost,
+//   createPost,
+//   updatePost,
+//   recordView,
+// } from "../api/board";
+
+// export default function PostDetailPage() {
+//   const { postId } = useParams();
+//   const isNewPost = postId === "new";
+//   const navigate = useNavigate();
+//   const { user } = useAuth();
+
+//   // Form State
+//   const [title, setTitle] = useState("");
+//   const [content, setContent] = useState("");
+//   const [attachments, setAttachments] = useState([]);
+//   const [newFiles, setNewFiles] = useState([]);
+//   const [deletedUrls, setDeletedUrls] = useState([]);
+
+//   // 작성자 여부를 관리할 상태 추가
+//   const [isAuthor, setIsAuthor] = useState(false);
+//   const [isLoading, setIsLoading] = useState(!isNewPost);
+
+//   // StrictMode 중복 호출 방지를 위해, fetch가 시작된 postId를 기록하는 Ref
+//   const initiatedFetchPostId = useRef(null);
+
+//   // 게시글 데이터 조회와 조회수 기록을 하나의 useEffect로 처리
+//   useEffect(() => {
+//     if (isNewPost) {
+//       setIsLoading(false);
+//       return;
+//     }
+
+//     // 현재 postId에 대한 API 호출이 이미 "시작"되었다면 중복 실행을 방지합니다.
+//     if (initiatedFetchPostId.current === postId) {
+//       return;
+//     }
+
+//     initiatedFetchPostId.current = postId;
+
+//     const fetchPostAndRecordView = async () => {
+//       try {
+//         // 1. 게시글 데이터 가져오기
+//         const response = await getPost(postId);
+//         const postData = response.data;
+//         setTitle(postData.title);
+//         setContent(postData.content);
+//         setAttachments(postData.attachmentUrls || []);
+
+//         // 현재 사용자와 게시글 작성자 ID 비교
+//         if (user && postData.authorId === user.id) {
+//           setIsAuthor(true);
+//         }
+
+//         recordView(postId).catch((err) => {
+//           console.warn("조회수 기록에 실패했습니다.", err);
+//         });
+//       } catch (error) {
+//         console.error("게시글 조회 실패", error);
+//         alert("게시글을 불러오는 데 실패했습니다.");
+//         navigate("/board");
+//       } finally {
+//         setIsLoading(false);
+//       }
+//     };
+
+//     fetchPostAndRecordView();
+//   }, [postId, isNewPost, navigate, user]);
+
+//   const handleFileChange = (e) => {
+//     setNewFiles(Array.from(e.target.files));
+//   };
+
+//   const handleDeleteAttachment = (url) => {
+//     setAttachments(attachments.filter((att) => att !== url));
+//     setDeletedUrls([...deletedUrls, url]);
+//   };
+
+//   const handleSubmit = async (e) => {
+//     e.preventDefault();
+//     const formData = new FormData();
+//     formData.append("title", title);
+//     formData.append("content", content);
+
+//     const filesKey = isNewPost ? "attachments" : "newAttachments";
+//     newFiles.forEach((file) => formData.append(filesKey, file));
+
+//     if (!isNewPost) {
+//       deletedUrls.forEach((url) =>
+//         formData.append("deletedAttachmentUrls", url)
+//       );
+//     }
+
+//     try {
+//       if (isNewPost) {
+//         await createPost(formData);
+//       } else {
+//         await updatePost(postId, formData);
+//       }
+//       navigate("/board");
+//     } catch (error) {
+//       console.error("게시글 저장 실패", error);
+//       alert("게시글 저장에 실패했습니다.");
+//     }
+//   };
+
+//   const handleDeletePost = async () => {
+//     if (window.confirm("정말 이 게시글을 삭제하시겠습니까?")) {
+//       try {
+//         await deletePost(postId);
+//         navigate("/board");
+//       } catch (error) {
+//         console.error("게시글 삭제 실패", error);
+//         alert("게시글 삭제에 실패했습니다.");
+//       }
+//     }
+//   };
+
+//   // 수정 가능 여부를 변수로 관리 (가독성 향상)
+//   const canEdit = isNewPost || isAuthor;
+
+//   if (isLoading) {
+//     return <div className="p-8">게시글을 불러오는 중입니다...</div>;
+//   }
+
+//   return (
+//     <div className="p-8 max-w-4xl mx-auto">
+//       <h1 className="text-3xl font-bold mb-6">
+//         {isNewPost ? "새 글 작성" : "게시글"}
+//       </h1>
+
+//       {/* 게시글 작성/수정 폼 */}
+//       <form onSubmit={handleSubmit} className="space-y-4 mb-12">
+//         <div>
+//           <label className="label">제목</label>
+//           <input
+//             type="text"
+//             value={title}
+//             onChange={(e) => setTitle(e.target.value)}
+//             className="input input-bordered w-full"
+//             required
+//             readOnly={!canEdit}
+//           />
+//         </div>
+//         <div>
+//           <label className="label">내용</label>
+//           <textarea
+//             value={content}
+//             onChange={(e) => setContent(e.target.value)}
+//             className="textarea textarea-bordered w-full h-40"
+//             required
+//             readOnly={!canEdit}
+//           />
+//         </div>
+
+//         {/* 기존 파일 관리 로직을 AttachmentBox 컴포넌트로 대체 */}
+//         <AttachmentBox
+//           existingAttachments={attachments}
+//           onNewFilesChange={setNewFiles} // 자식이 호출할 상태 업데이트 함수 전달
+//           onDeletedUrlsChange={setDeletedUrls} // 자식이 호출할 상태 업데이트 함수 전달
+//           canEdit={canEdit}
+//         />
+
+//         <div className="flex gap-2">
+//           {/* '수정 완료' 또는 '작성 완료' 버튼 조건부 렌더링 */}
+//           {canEdit && (
+//             <button type="submit" className="btn btn-primary">
+//               {isNewPost ? "작성 완료" : "수정 완료"}
+//             </button>
+//           )}
+//           {/* 작성자이면서 새 글이 아닐 때만 '삭제' 버튼 표시 */}
+//           {isAuthor && !isNewPost && (
+//             <button
+//               type="button"
+//               onClick={handleDeletePost}
+//               className="btn btn-error"
+//             >
+//               삭제
+//             </button>
+//           )}
+//           <button
+//             type="button"
+//             onClick={() => navigate("/board")}
+//             className="btn"
+//           >
+//             목록으로
+//           </button>
+//         </div>
+//       </form>
+
+//       {/* 댓글 섹션 (새 글 작성이 아닐 때만 표시) */}
+//       {!isNewPost && <CommentsBox postId={postId} />}
+//     </div>
+//   );
+// }

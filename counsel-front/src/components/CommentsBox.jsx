@@ -1,12 +1,14 @@
 // src/components/CommentsBox.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import {
   getCommentsByPostId,
   createComment,
   updateComment,
   deleteComment,
+  reportComment,
 } from "../api/comment";
+import ReportModal from "./ReportModal";
 
 export default function CommentsBox({ postId }) {
   const { user } = useAuth(); // 현재 로그인된 사용자 정보
@@ -16,10 +18,14 @@ export default function CommentsBox({ postId }) {
 
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
-
-  // 수정 중인 댓글의 ID와 내용을 관리하는 상태
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingContent, setEditingContent] = useState("");
+
+  // 신고 모달 관련 state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [reportingCommentId, setReportingCommentId] = useState(null);
+
+  const isProcessingReport = useRef(false);
 
   useEffect(() => {
     fetchComments();
@@ -83,6 +89,45 @@ export default function CommentsBox({ postId }) {
     }
   };
 
+  // 모달을 여는 함수
+  const handleOpenModal = (commentId) => {
+    setReportingCommentId(commentId);
+    setIsModalOpen(true);
+  };
+
+  // 모달을 닫는 함수
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setReportingCommentId(null);
+  };
+
+  // 신고 제출 처리 함수 (ReportModal로부터 reason을 인자로 받음)
+  const handleSubmitReport = async (reason) => {
+    // 중복 요청시 즉시 종료
+    if (isProcessingReport.current) {
+      return;
+    }
+
+    if (!reason || !reason.trim()) {
+      alert("신고 사유를 입력해야 합니다.");
+      return;
+    }
+
+    try {
+      isProcessingReport.current = true;
+      await reportComment(reportingCommentId, reason);
+      alert("댓글이 성공적으로 신고되었습니다.");
+      handleCloseModal(); // 성공 시 모달 닫기
+    } catch (error) {
+      console.error("댓글 신고 실패", error);
+      const errorMessage =
+        error.response?.data?.message || "댓글 신고에 실패했습니다.";
+      alert(errorMessage);
+    } finally {
+      isProcessingReport.current = false;
+    }
+  };
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-4">댓글</h2>
@@ -111,31 +156,52 @@ export default function CommentsBox({ postId }) {
                 </button>
               </form>
             ) : (
-              // 일반 모드일 때
               <div>
                 <p className="font-semibold">{comment.writerEmail}</p>
-                <p className="whitespace-pre-wrap">{comment.content}</p>
+                {/* blinded 상태에 따라 댓글 내용 분기 처리 */}
+                {comment.blinded ? (
+                  <p className="whitespace-pre-wrap italic">
+                    {comment.content}
+                  </p>
+                ) : (
+                  <p className="whitespace-pre-wrap">{comment.content}</p>
+                )}
                 <div className="flex justify-between items-center mt-2">
                   <p className="text-xs text-gray-500">
                     {new Date(comment.createdAt).toLocaleString()}
                   </p>
-                  {/* 현재 유저가 댓글 작성자일 경우 수정/삭제 버튼 표시 */}
-                  {user && user.email === comment.writerEmail && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditMode(comment)}
-                        className="btn btn-xs"
-                      >
-                        수정
-                      </button>
-                      <button
-                        onClick={() => handleDeleteComment(comment.id)}
-                        className="btn btn-xs btn-error"
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  )}
+                  {/* 버튼 컨테이너 */}
+                  <div className="flex gap-2">
+                    {!comment.blinded &&
+                      user &&
+                      user.email === comment.writerEmail && (
+                        <>
+                          <button
+                            onClick={() => handleEditMode(comment)}
+                            className="btn btn-xs"
+                          >
+                            수정
+                          </button>
+                          <button
+                            onClick={() => handleDeleteComment(comment.id)}
+                            className="btn btn-xs btn-error"
+                          >
+                            삭제
+                          </button>
+                        </>
+                      )}
+                    {/* 로그인 유저가 타인의 댓글을 볼 때 신고 버튼 표시 */}
+                    {!comment.blinded &&
+                      user &&
+                      user.email !== comment.writerEmail && (
+                        <button
+                          onClick={() => handleOpenModal(comment.id)}
+                          className="btn btn-xs btn-warning"
+                        >
+                          신고
+                        </button>
+                      )}
+                  </div>
                 </div>
               </div>
             )}
@@ -157,6 +223,12 @@ export default function CommentsBox({ postId }) {
           </button>
         </form>
       )}
+      {/* 분리된 ReportModal 컴포넌트 렌더링 */}
+      <ReportModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmitReport}
+      />
     </div>
   );
 }

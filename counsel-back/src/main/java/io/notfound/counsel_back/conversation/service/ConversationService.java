@@ -66,7 +66,7 @@ public class ConversationService {
             updated = true;
         }
         if (request.getMemo() != null) {
-            conversation.updateSummary(request.getMemo());
+            conversation.updateMemo(request.getMemo());
             updated = true;
         }
 
