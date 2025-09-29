@@ -27,17 +27,25 @@ public class Report {
 
     private String reason;
 
+    private String justification; // AI의 판단 근거 저장 필드
+
     @Enumerated(EnumType.STRING)
     private ReportStatus status;
 
     private LocalDateTime createdAt;
+    @PrePersist
+    public void createdAt() {
+        this.createdAt = LocalDateTime.now();
+    }
 
     public void updateStatus(ReportStatus newStatus) {
         this.status = newStatus;
     }
 
-    @PrePersist
-    public void createdAt() {
-        this.createdAt = LocalDateTime.now();
+    // 판단 근거를 업데이트하는 메서드 추가
+    public void updateJustification(String justification) {
+        this.justification = justification;
     }
+
+
 }
