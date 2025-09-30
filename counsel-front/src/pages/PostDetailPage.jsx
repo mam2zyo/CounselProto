@@ -37,76 +37,73 @@ export default function PostDetailPage() {
 
   const initiatedFetchPostId = useRef(null);
 
-  // Fetch Post and Record View
-  useEffect(() => {
-    if (isNewPost) return;
-
-    if (initiatedFetchPostId.current === postId) return;
-    initiatedFetchPostId.current = postId;
-
-    const fetchPostAndRecordView = async () => {
-      try {
-        const response = await getPost(postId);
-        const postData = response.data;
-        setPost(postData);
-
-        if (user && postData.authorId === user.id) {
-          setIsAuthor(true);
-        } else {
-          setIsAuthor(false);
+     // Fetch Post and Record View
+    useEffect(() => {
+      if (isNewPost) return;
+      if (initiatedFetchPostId.current === postId) return;
+      initiatedFetchPostId.current = postId;
+      const fetchPostAndRecordView = async () => {
+        // ... (기존 getPost, recordView 로직)
+        try {
+          const response = await getPost(postId);
+          const postData = response.data;
+          setPost(postData);
+          if (user && postData.authorId === user.id) {
+            setIsAuthor(true);
+          } else {
+            setIsAuthor(false);
+          }
+          recordView(postId).catch((err) =>
+            console.warn("조회수 기록 실패", err)
+          );
+          if (user) {
+            try {
+              const likeResponse = await getLikeStatus(postId);
+              setLiked(likeResponse.data.liked);
+              // postData에 likeCount가 포함되어 있으므로 setPost를 여기서 다시 할 필요는 없음
+            } catch {
+              setLiked(false);
+            }
+          } else {
+            setLiked(false);
+          }
+        } catch (error) {
+          console.error("게시글 조회 실패", error);
+          alert("게시글을 불러오는 데 실패했습니다.");
+          navigate("/board");
+        } finally {
+          setIsLoading(false);
         }
+      };
+      fetchPostAndRecordView();
 
-        recordView(postId).catch((err) =>
-          console.warn("조회수 기록 실패", err)
-        );
-
-        if (user) {
+      // **Polling: Like status periodic fetch** 이 블록을 제거하거나 주석 처리
+      /*
+      let pollingInterval = null;
+      if (user) {
+        const fetchLikeStatusPeriodically = async () => {
           try {
             const likeResponse = await getLikeStatus(postId);
             setLiked(likeResponse.data.liked);
+            setPost(prevPost => ({
+              ...prevPost,
+              likeCount: likeResponse.data.likeCount,
+            }));
           } catch {
-            setLiked(false);
+            // Fail silently or log to console
           }
-        } else {
-          setLiked(false);
-        }
-      } catch (error) {
-        console.error("게시글 조회 실패", error);
-        alert("게시글을 불러오는 데 실패했습니다.");
-        navigate("/board");
-      } finally {
-        setIsLoading(false);
+        };
+        fetchLikeStatusPeriodically(); // Initial fetch
+        pollingInterval = setInterval(fetchLikeStatusPeriodically, 5000); // Poll every 5 seconds
       }
-    };
-
-    fetchPostAndRecordView();
-
-    // **Polling: Like status periodic fetch**
-    let pollingInterval = null;
-
-    if (user) {
-      const fetchLikeStatusPeriodically = async () => {
-        try {
-          const likeResponse = await getLikeStatus(postId);
-          setLiked(likeResponse.data.liked);
-          setPost(prevPost => ({
-            ...prevPost,
-            likeCount: likeResponse.data.likeCount,
-          }));
-        } catch {
-          // Fail silently or log to console
-        }
+      return () => {
+        if (pollingInterval) clearInterval(pollingInterval); // Cleanup on unmount
       };
-
-      fetchLikeStatusPeriodically(); // Initial fetch
-
-      pollingInterval = setInterval(fetchLikeStatusPeriodically, 5000); // Poll every 5 seconds
-    }
-
-    return () => {
-      if (pollingInterval) clearInterval(pollingInterval); // Cleanup on unmount
-    };
-  }, [postId, isNewPost, navigate, user]);
+      */
+      
+      // 폴링이 제거되었으므로, 클린업 로직도 필요 없습니다.
+      return () => {}; // 훅이 무언가를 리턴해야 한다면 빈 클린업 함수를 리턴
+    }, [postId, isNewPost, navigate, user]);
 
   // Save post (create/update)
   const handleSave = async (editedPost, newFiles, deletedUrls) => {
