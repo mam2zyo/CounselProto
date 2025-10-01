@@ -86,11 +86,6 @@ public class BoardController {
             case "views" -> "views";       // Post 엔티티의 조회수 필드
             default -> "createdAt";   // 최신순
         };
-        // 최신/조회수는 엔티티 필드 정렬
-        String sortProperty = switch (key) {
-            case "views" -> "views";       // Post 엔티티의 조회수 필드
-            default -> "createdAt";   // 최신순
-        };
 
         Sort.Direction dir = "asc".equalsIgnoreCase(direction)
                 ? Sort.Direction.ASC : Sort.Direction.DESC;
