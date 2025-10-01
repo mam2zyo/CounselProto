@@ -90,19 +90,28 @@ export default function PostViewer({
           aria-pressed={liked}
           aria-label={liked ? "좋아요 취소" : "좋아요"}
         >
-          {liked ? "❤️ 좋아요" : "🤍 좋아요"} {likeCount ?? 0}
+          {liked ? "❤️ 공감" : "🤍 공감"} {likeCount ?? 0}
         </button>
 
-        <button onClick={() => navigate("/board")} className="btn btn-sm sm:btn-md">
+        <button
+          onClick={() => navigate("/board")}
+          className="btn btn-sm sm:btn-md"
+        >
           목록
         </button>
 
         {isAuthor && (
           <>
-            <button onClick={onEdit} className="btn btn-outline btn-sm sm:btn-md">
+            <button
+              onClick={onEdit}
+              className="btn btn-outline btn-sm sm:btn-md"
+            >
               수정
             </button>
-            <button onClick={onDelete} className="btn btn-error btn-sm sm:btn-md">
+            <button
+              onClick={onDelete}
+              className="btn btn-error btn-sm sm:btn-md"
+            >
               삭제
             </button>
           </>
