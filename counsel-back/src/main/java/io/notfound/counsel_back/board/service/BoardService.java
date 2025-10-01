@@ -87,10 +87,9 @@ public class BoardService {
     public Page<PostResponse> getAllPosts(String search, Pageable pageable, String email) {
         Page<Post> posts;
         if (search == null || search.trim().isEmpty()) {
-            posts = postRepository.findAll(pageable);
+            posts = postRepository.findAllWithAuthorAndAttachments(pageable);
         } else {
-            posts = postRepository.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(
-                    search, search, pageable);
+            posts = postRepository.findByKeywordContainingIgnoreCase(search.trim(), pageable);
         }
 
         final User finalUser = (email != null && !email.isBlank())
@@ -103,7 +102,7 @@ public class BoardService {
         });
     }
 
-    // 댓글순 정렬 게시글 목록
+    // 댓글순 정렬 전용: commentCount 기준 + 정렬 방향(direction) 반영
     @Transactional(readOnly = true)
     public Page<PostResponse> getAllPostsOrderByCommentCount(String search, Pageable pageable, String direction) {
         Sort.Direction dir = "asc".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
@@ -116,10 +115,10 @@ public class BoardService {
 
         Page<Post> posts;
         if (search == null || search.trim().isEmpty()) {
-            posts = postRepository.findAll(sorted);
+            posts = postRepository.findAllWithAuthorAndAttachments(sorted);
         } else {
             String q = search.trim();
-            posts = postRepository.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(q, q, sorted);
+            posts = postRepository.findByKeywordContainingIgnoreCase(search.trim(), sorted);
         }
 
         return posts.map(PostResponse::from);
@@ -142,7 +141,6 @@ public class BoardService {
             List<Attachment> attachmentsToDelete = post.getAttachments().stream()
                     .filter(att -> request.getDeletedAttachmentUrls().contains(att.getFileUrl()))
                     .toList();
-
             for (Attachment attachment : attachmentsToDelete) {
                 try {
                     s3Service.deleteFile(attachment.getFileUrl());
@@ -179,12 +177,14 @@ public class BoardService {
             throw new UnauthorizedActionException("게시글을 삭제할 권한이 없습니다.");
         }
 
+        // 유니크 뷰 기록 먼저 삭제 (FK 충돌 방지)
         try {
             postViewRepository.deleteByPostId(id);
         } catch (Exception ex) {
             System.err.println("[WARN] PostView 삭제 중 문제 발생(postId=" + id + "): " + ex.getMessage());
         }
 
+        // S3 파일 삭제
         if (post.getAttachments() != null) {
             for (Attachment attachment : post.getAttachments()) {
                 String url = attachment.getFileUrl();

@@ -20,7 +20,6 @@ public class AIModerationService {
     public AIModerationResponse moderateComment(String postContent, String commentContent, String reportReason) {
         ChatClient chatClient = ChatClient.create(openAiChatModel);
 
-        // 1. BeanOutputParser -> BeanOutputConverter 로 변경
         var outputConverter = new BeanOutputConverter<>(AIModerationResponse.class);
 
         String promptString = """

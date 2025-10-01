@@ -26,5 +26,4 @@ public class PostLike {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // equals, hashCode는 id 기준으로 구현해도 무방
 }
