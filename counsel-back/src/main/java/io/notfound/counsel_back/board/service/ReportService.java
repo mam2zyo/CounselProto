@@ -11,6 +11,7 @@ import io.notfound.counsel_back.user.entity.User;
 import io.notfound.counsel_back.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+@Slf4j
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -33,7 +35,7 @@ public class ReportService {
     private final AIModerationService aiModerationService;
 
     @Transactional
-    public Report saveReport(ReportRequestDto requestDto, String email) {
+    public ReportResponseDto saveReport(ReportRequestDto requestDto, String email) {
 
         User reporter = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -64,7 +66,7 @@ public class ReportService {
 
         processReportWithAI(savedReport);
 
-        return savedReport;
+        return new ReportResponseDto(savedReport);
     }
 
     @Async
@@ -74,28 +76,34 @@ public class ReportService {
             // AI 분석에 필요한 데이터 조회
             Comment comment = commentRepository.findById(report.getTargetId())
                     .orElseThrow(() -> new EntityNotFoundException("신고된 댓글을 찾을 수 없습니다."));
+
+            if (comment.isBlinded()) {
+                return;
+            }
+
             Post post = comment.getPost();
 
             // AI 서비스 호출
             AIModerationResponse aiResponse = aiModerationService.moderateComment(
-                    post.getContent(),
-                    comment.getContent(),
-                    report.getReason()
-            );
+                    post.getContent(), comment.getContent(), report.getReason());
 
-            // AI 결정에 따라 신고 상태 업데이트
-            ReportStatus finalStatus = "APPROVE_REPORT".equalsIgnoreCase(aiResponse.getDecision())
-                    ? ReportStatus.APPROVED
-                    : ReportStatus.REJECTED;
+            report.updateJustification(aiResponse.getJustification());
 
-            report.updateStatus(finalStatus);
-            // 필요하다면 AI의 판단 근거(justification)도 Report 엔티티에 저장할 수 있음
-            // report.updateJustification(aiResponse.getJustification());
+            boolean isApproved = "APPROVE_REPORT".equalsIgnoreCase(aiResponse.getDecision());
+
+            if (isApproved) {
+                report.updateStatus(ReportStatus.APPROVED);
+
+                comment.blind();
+                commentRepository.save(comment);
+            } else {
+                report.updateStatus(ReportStatus.REJECTED);
+            }
+
             reportRepository.save(report);
 
         } catch (Exception e) {
-            // 에러 발생 시 로그를 남기고, 관리자가 직접 처리하도록 둘 수 있음
-            // log.error("AI 신고 처리 중 에러 발생. Report ID: {}", report.getId(), e);
+             log.error("AI 신고 처리 중 에러 발생. Report ID: {}", report.getId(), e);
         }
     }
 
@@ -115,7 +123,8 @@ public class ReportService {
      * @param newStatus 새로운 상태 (APPROVED / REJECTED)
      * @return 상태가 변경된 Report 엔티티
      */
-    public Report updateReportStatus(Long reportId, ReportStatus newStatus) {
+    @Transactional
+    public ReportResponseDto updateReportStatus(Long reportId, ReportStatus newStatus) {
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new EntityNotFoundException("해당 ID의 신고를 찾을 수 없습니다: " + reportId));
 
@@ -127,8 +136,9 @@ public class ReportService {
         // Lombok의 @Builder나 별도의 setter를 이용해 status 필드 수정
         // Report 엔티티에 status를 변경할 수 있는 메서드를 만드는 것이 가장 객체지향적임
         report.updateStatus(newStatus); // 이 메서드를 Report 엔티티에 추가해야 함
+        Report savedReport = reportRepository.save(report);
 
-        return reportRepository.save(report);
+        return new ReportResponseDto(savedReport);
     }
 
     @Transactional(readOnly = true)

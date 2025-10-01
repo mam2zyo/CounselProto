@@ -12,17 +12,16 @@ import java.util.List;
 @Builder
 public class PostResponse {
 
-    private Long postId;         // 게시글 ID
-    private Long authorId;       // 게시글 작성자 ID
-    private String title;        // 게시글 제목
-    private String content;      // 게시글 내용
-    private List<String> attachmentUrls;  // 첨부파일 URL 리스트
-    private Integer viewCount;   // 조회수
-    private Integer commentCount; // 댓글 수
-    private String createdAt;    // 생성일시 (yyyy-MM-dd HH:mm 형식)
-
+    private Long postId;
+    private Long authorId;
+    private String title;
+    private String content;
+    private List<String> attachmentUrls;
+    private Integer viewCount;
+    private Integer commentCount;
     private Integer likeCount;   // 좋아요 수
     private Boolean liked;       // 로그인 유저의 좋아요 여부
+    private String createdAt;
 
     // 기본적으로 liked는 false로 설정
     public static PostResponse from(Post post) {
@@ -41,11 +40,11 @@ public class PostResponse {
                         : List.of())
                 .viewCount(post.getViews())
                 .commentCount(post.getCommentCount())
+                .likeCount(post.getLikeCount())
+                .liked(liked)
                 .createdAt(post.getCreatedAt() != null
                         ? post.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
                         : null)
-                .likeCount(post.getLikeCount()) // 좋아요 수
-                .liked(liked)  // 로그인 유저가 좋아요를 눌렀는지 여부
                 .build();
     }
 }

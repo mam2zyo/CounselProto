@@ -13,10 +13,20 @@ import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
-    /** 제목/내용 대소문자 무시 부분검색 + 페이지네이션 */
-    Page<Post> findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(
-            String title, String content, Pageable pageable
-    );
+    @Query(value = "SELECT DISTINCT p FROM Post p " +
+            "JOIN FETCH p.author " +
+            "LEFT JOIN FETCH p.attachments",
+            countQuery = "SELECT COUNT(p) FROM Post p")
+    Page<Post> findAllWithAuthorAndAttachments(Pageable pageable);
+
+    /** 제목/내용 대소문자 무시 부분검색 + 페이지네이션 (수정된 버전) */
+    @Query(value = "SELECT p FROM Post p WHERE " +
+            "LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(CAST(p.content AS string)) LIKE LOWER(CONCAT('%', :keyword, '%'))",
+            countQuery = "SELECT count(p.id) FROM Post p WHERE " +
+                    "LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+                    "LOWER(CAST(p.content AS string)) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    Page<Post> findByKeywordContainingIgnoreCase(@Param("keyword") String keyword, Pageable pageable);
 
     /** 상세 조회 시 작성자/첨부까지 한 번에 가져오기 (N+1 방지) */
     @Query("SELECT p FROM Post p JOIN FETCH p.author LEFT JOIN FETCH p.attachments WHERE p.id = :id")

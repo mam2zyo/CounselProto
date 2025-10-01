@@ -6,7 +6,6 @@ import io.notfound.counsel_back.board.entity.Report;
 import io.notfound.counsel_back.board.entity.ReportStatus;
 import io.notfound.counsel_back.board.entity.ReportTargetType;
 import io.notfound.counsel_back.board.service.ReportService;
-import io.notfound.counsel_back.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,12 +25,12 @@ public class ReportController {
     private final ReportService reportService;
 
     @PostMapping
-    public ResponseEntity<Report> createReport(
+    public ResponseEntity<ReportResponseDto> createReport(
             @RequestBody ReportRequestDto requestDto,
             @AuthenticationPrincipal UserDetails userDetails) {
         String email = userDetails.getUsername();
 
-        Report saved = reportService.saveReport(requestDto, email);
+        ReportResponseDto saved = reportService.saveReport(requestDto, email);
         return ResponseEntity.ok(saved);
     }
 
@@ -49,11 +48,11 @@ public class ReportController {
     // 관리자용 신고 상태 변경 엔드포인트
     @PatchMapping("/admin/{reportId}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Report> updateReportStatus(
+    public ResponseEntity<ReportResponseDto> updateReportStatus(
             @PathVariable Long reportId,
             @RequestParam ReportStatus status
     ) {
-        Report updatedReport = reportService.updateReportStatus(reportId, status);
+        ReportResponseDto updatedReport = reportService.updateReportStatus(reportId, status);
         return ResponseEntity.ok(updatedReport);
     }
 }

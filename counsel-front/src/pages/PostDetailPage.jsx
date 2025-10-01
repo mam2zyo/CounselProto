@@ -80,33 +80,34 @@ export default function PostDetailPage() {
     };
 
     fetchPostAndRecordView();
-
-    // **Polling: Like status periodic fetch**
-    let pollingInterval = null;
-
-    if (user) {
-      const fetchLikeStatusPeriodically = async () => {
-        try {
-          const likeResponse = await getLikeStatus(postId);
-          setLiked(likeResponse.data.liked);
-          setPost(prevPost => ({
-            ...prevPost,
-            likeCount: likeResponse.data.likeCount,
-          }));
-        } catch {
-          // Fail silently or log to console
-        }
-      };
-
-      fetchLikeStatusPeriodically(); // Initial fetch
-
-      pollingInterval = setInterval(fetchLikeStatusPeriodically, 5000); // Poll every 5 seconds
-    }
-
-    return () => {
-      if (pollingInterval) clearInterval(pollingInterval); // Cleanup on unmount
-    };
   }, [postId, isNewPost, navigate, user]);
+
+  //   // **Polling: Like status periodic fetch**
+  //   let pollingInterval = null;
+
+  //   if (user) {
+  //     const fetchLikeStatusPeriodically = async () => {
+  //       try {
+  //         const likeResponse = await getLikeStatus(postId);
+  //         setLiked(likeResponse.data.liked);
+  //         setPost(prevPost => ({
+  //           ...prevPost,
+  //           likeCount: likeResponse.data.likeCount,
+  //         }));
+  //       } catch {
+  //         // Fail silently or log to console
+  //       }
+  //     };
+
+  //     fetchLikeStatusPeriodically(); // Initial fetch
+
+  //     pollingInterval = setInterval(fetchLikeStatusPeriodically, 5000); // Poll every 5 seconds
+  //   }
+
+  //   return () => {
+  //     if (pollingInterval) clearInterval(pollingInterval); // Cleanup on unmount
+  //   };
+  // }, [postId, isNewPost, navigate, user]);
 
   // Save post (create/update)
   const handleSave = async (editedPost, newFiles, deletedUrls) => {
@@ -156,7 +157,7 @@ export default function PostDetailPage() {
     }
   };
 
-  // Like toggle
+  // handleToggleLike
   const handleToggleLike = async () => {
     if (!user) {
       alert("로그인이 필요합니다.");
@@ -164,16 +165,13 @@ export default function PostDetailPage() {
     }
 
     try {
-      await toggleLike(postId);
+      const response = await toggleLike(postId);
+      const { liked: newLiked, likeCount: newLikeCount } = response.data;
 
-      const newLiked = !liked;
       setLiked(newLiked);
-
       setPost((prevPost) => ({
         ...prevPost,
-        likeCount: newLiked
-          ? prevPost.likeCount + 1
-          : prevPost.likeCount - 1,
+        likeCount: newLikeCount,
       }));
     } catch (error) {
       console.error("좋아요 토글 실패", error);

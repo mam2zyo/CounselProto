@@ -1,5 +1,6 @@
 package io.notfound.counsel_back.board.controller;
 
+import io.notfound.counsel_back.board.dto.PostLikeResponse;
 import io.notfound.counsel_back.board.dto.PostRequest;
 import io.notfound.counsel_back.board.dto.PostResponse;
 import io.notfound.counsel_back.board.dto.PostUpdateRequest;
@@ -25,7 +26,6 @@ public class BoardController {
 
     private final BoardService boardService;
 
-    /** 게시글 생성 (로그인 필요, 파일 업로드 지원) */
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<PostResponse> createPost(
             @ModelAttribute PostRequest request,
@@ -65,23 +65,39 @@ public class BoardController {
     @GetMapping
     public ResponseEntity<Page<PostResponse>> getAllPosts(
             @RequestParam(required = false) String search,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @RequestParam(required = false, defaultValue = "latest") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String direction,
+            @PageableDefault(size = 10) Pageable pageable,
+            @AuthenticationPrincipal UserDetails userDetails
 
+    ) {
         final String email = (userDetails != null) ? userDetails.getUsername() : null;
-        Page<PostResponse> page = boardService.getAllPosts(search, pageable, email);
-        return ResponseEntity.ok(page);
-    }
+        final String key = (sortBy == null) ? "latest" : sortBy.trim().toLowerCase();
 
-    /** 댓글순 정렬 게시글 목록 조회 (검색 + 페이지네이션) */
-    @GetMapping("/comments")
-    public ResponseEntity<Page<PostResponse>> getAllPostsOrderByCommentCount(
-            @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "desc") String direction,
-            @PageableDefault(size = 10) Pageable pageable) {
+        // 댓글순은 COUNT/필드 기반 정렬 전용 서비스로 위임 (방향 포함)
+        if ("comments".equals(key)) {
+            Page<PostResponse> responses =
+                    boardService.getAllPostsOrderByCommentCount(search, pageable, direction);
+            return ResponseEntity.ok(responses);
+        }
 
-        Page<PostResponse> page = boardService.getAllPostsOrderByCommentCount(search, pageable, direction);
-        return ResponseEntity.ok(page);
+        // 최신/조회수는 엔티티 필드 정렬
+        String sortProperty = switch (key) {
+            case "views" -> "views";       // Post 엔티티의 조회수 필드
+            default -> "createdAt";   // 최신순
+        };
+
+        Sort.Direction dir = "asc".equalsIgnoreCase(direction)
+                ? Sort.Direction.ASC : Sort.Direction.DESC;
+
+        Pageable effectivePageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(dir, sortProperty)
+        );
+
+        Page<PostResponse> responses = boardService.getAllPosts(search, effectivePageable, email);
+        return ResponseEntity.ok(responses);
     }
 
     /** 게시글 수정 */
@@ -117,7 +133,7 @@ public class BoardController {
 
     // 게시글 좋아요 토글
     @PostMapping("/{postId}/like")
-    public ResponseEntity<Void> toggleLike(
+    public ResponseEntity<PostLikeResponse> toggleLike(
             @PathVariable Long postId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
@@ -126,9 +142,9 @@ public class BoardController {
         }
 
         String email = userDetails.getUsername(); // 로그인한 유저의 이메일
-        boardService.toggleLike(postId, email); // 좋아요 토글 서비스 호출
+        PostLikeResponse response = boardService.toggleLike(postId, email);
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(response);
     }
 
     // 게시글 좋아요 상태 조회

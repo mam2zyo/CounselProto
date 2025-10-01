@@ -13,7 +13,10 @@ export default function BoardPage() {
   const [page, setPage] = useState(0); // 0-based
   const [size] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
-  const [keyword, setKeyword] = useState("");
+
+  // 검색어 상태를 입력용과 실제 검색용으로 분리
+  const [inputKeyword, setInputKeyword] = useState("");
+  const [searchKeyword, setSearchKeyword] = useState("");
 
   // 정렬 상태
   const [sortBy, setSortBy] = useState("latest"); // latest | views | comments
@@ -23,9 +26,9 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // 번호 버튼 배열 (최대 7개 표시)
+  // 번호 버튼 배열 (최대 5개 표시)
   const pageButtons = useMemo(() => {
-    const maxButtons = 7;
+    const maxButtons = 5;
     const pages = totalPages || 1;
     const current = page; // 0-based
     const start = Math.max(
@@ -49,7 +52,7 @@ export default function BoardPage() {
       setErr("");
       try {
         const { data } = await getAllPosts({
-          search: keyword.trim(),
+          keyword: searchKeyword.trim(),
           sortBy,
           direction: order, // 정렬 방향 서버로 전달
           page,
@@ -58,7 +61,8 @@ export default function BoardPage() {
 
         const list = Array.isArray(data?.content) ? data.content : [];
         setPosts(list); // 프론트에서 reverse() 금지
-        setTotalPages(data?.totalPages ?? 1);
+
+        setTotalPages(data?.page?.totalPages ?? 1);
       } catch (e) {
         console.error("게시글 목록 조회 실패", e);
         setErr(e?.response?.data?.message || "게시글 목록 조회 실패");
@@ -68,13 +72,11 @@ export default function BoardPage() {
         setLoading(false);
       }
     };
-
     fetch();
-    // 페이지 바뀔 때 상단으로 스크롤 (사라진 것처럼 보이는 문제 방지)
     window.scrollTo({ top: 0, behavior: "instant" });
-  }, [isLoggedIn, keyword, sortBy, order, page, size]);
+  }, [isLoggedIn, searchKeyword, sortBy, order, page, size]);
 
-  // 창 포커스/가시성 복귀 시 자동 갱신 (현재 페이지 그대로 새로고침)
+  // 창 포커스/가시성 복귀 시 자동 갱신
   useEffect(() => {
     const onFocus = () => setPage((p) => p); // 동일 값 set → effect 트리거
     const onVisibility = () => {
@@ -110,9 +112,15 @@ export default function BoardPage() {
   const handleNext = () => goToPage(page + 1);
 
   // 검색
-  const handleSearch = () => setPage(0);
+  const handleSearch = () => {
+    setSearchKeyword(inputKeyword); // 입력된 키워드를 실제 검색 키워드로 설정
+    setPage(0); // 검색 시 첫 페이지로 이동
+  };
+
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") handleSearch();
+    if (e.key === "Enter") {
+      handleSearch();
+    }
   };
 
   if (!isLoggedIn) {
@@ -216,14 +224,8 @@ export default function BoardPage() {
               </div>
               <div className="hidden md:block w-3/12 text-center text-gray-500 text-sm">
                 {post.createdAt
-                  ? new Date(post.createdAt).toLocaleString([], {
-                      year: "numeric",
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  : "-"}
+                  ? new Date(post.createdAt).toLocaleString()
+                  : ""}
               </div>
             </div>
           ))
@@ -261,22 +263,21 @@ export default function BoardPage() {
         >
           다음 ▶
         </button>
-
-        <span className="text-sm text-gray-700 ml-2">
-          {page + 1} / {totalPages}
-        </span>
       </div>
 
       {/* 검색 바 */}
       <div className="flex mt-8 items-center justify-center">
+        {/* --- 여기부터 수정 --- */}
+        {/* 5. 입력창의 value와 onChange를 inputKeyword와 연결 */}
         <input
           type="text"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
+          value={inputKeyword}
+          onChange={(e) => setInputKeyword(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="제목, 내용 검색"
           className="input input-bordered w-full max-w-xs"
         />
+        {/* --- 여기까지 수정 --- */}
         <button onClick={handleSearch} className="btn btn-primary ml-2">
           검색
         </button>
@@ -284,5 +285,3 @@ export default function BoardPage() {
     </div>
   );
 }
-
-     
