@@ -1,5 +1,6 @@
 package io.notfound.counsel_back.board.controller;
 
+import io.notfound.counsel_back.board.dto.PostLikeResponse;
 import io.notfound.counsel_back.board.dto.PostRequest;
 import io.notfound.counsel_back.board.dto.PostResponse;
 import io.notfound.counsel_back.board.dto.PostUpdateRequest;
@@ -15,6 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -38,8 +41,12 @@ public class BoardController {
 
     /** 게시글 상세 조회 (조회수 증가 없음) */
     @GetMapping("/{id}")
-    public ResponseEntity<PostResponse> getPost(@PathVariable Long id) {
-        PostResponse response = boardService.getPost(id);
+    public ResponseEntity<PostResponse> getPost(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        final String email = (userDetails != null) ? userDetails.getUsername() : null;
+        PostResponse response = boardService.getPostWithLikeInfo(id, email);
         return ResponseEntity.ok(response);
     }
 
@@ -47,29 +54,24 @@ public class BoardController {
     @PostMapping("/{id}/view")
     public ResponseEntity<Void> recordUniqueView(
             @PathVariable Long id,
-            @AuthenticationPrincipal UserDetails userDetails
-            ) {
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         final String email = (userDetails != null) ? userDetails.getUsername() : null;
         boardService.recordUniqueView(id, email);
         return ResponseEntity.ok().build();
     }
 
-    /**
-     * 게시글 목록 조회 (검색 + 페이지네이션 + 정렬)
-     *
-     * - 검색:   /api/board?search=키워드
-     * - 정렬:   /api/board?sortBy=latest|views|comments  (기본: latest)
-     * - 방향:   /api/board?direction=asc|desc           (기본: desc)
-     * - 페이지: page, size (Pageable 기본 파라미터)
-     */
+    /** 게시글 목록 조회 (검색 + 페이지네이션 + 좋아요 포함) */
     @GetMapping
     public ResponseEntity<Page<PostResponse>> getAllPosts(
             @RequestParam(required = false) String search,
             @RequestParam(required = false, defaultValue = "latest") String sortBy,
             @RequestParam(required = false, defaultValue = "desc") String direction,
-            @PageableDefault(size = 10) Pageable pageable
+            @PageableDefault(size = 10) Pageable pageable,
+            @AuthenticationPrincipal UserDetails userDetails
+
     ) {
+        final String email = (userDetails != null) ? userDetails.getUsername() : null;
         final String key = (sortBy == null) ? "latest" : sortBy.trim().toLowerCase();
 
         // 댓글순은 COUNT/필드 기반 정렬 전용 서비스로 위임 (방향 포함)
@@ -94,14 +96,14 @@ public class BoardController {
                 Sort.by(dir, sortProperty)
         );
 
-        Page<PostResponse> responses = boardService.getAllPosts(search, effectivePageable);
+        Page<PostResponse> responses = boardService.getAllPosts(search, effectivePageable, email);
         return ResponseEntity.ok(responses);
     }
 
-    /** 게시글 수정 (로그인 필요, 파일 업로드 지원) */
-    @PutMapping(value = "/{id}", consumes = {"multipart/form-data"})
+    /** 게시글 수정 */
+    @PutMapping(value = "/{postId}", consumes = {"multipart/form-data"})
     public ResponseEntity<PostResponse> updatePost(
-            @PathVariable Long id,
+            @PathVariable Long postId,
             @ModelAttribute PostUpdateRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
@@ -109,11 +111,12 @@ public class BoardController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         final String email = userDetails.getUsername();
-        PostResponse response = boardService.updatePost(id, request, email);
+
+        PostResponse response = boardService.updatePost(postId, request, email);
         return ResponseEntity.ok(response);
     }
 
-    /** 게시글 삭제 (로그인 필요) */
+    /** 게시글 삭제 */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePost(
             @PathVariable Long id,
@@ -123,7 +126,35 @@ public class BoardController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         final String email = userDetails.getUsername();
+
         boardService.deletePost(id, email);
         return ResponseEntity.noContent().build();
+    }
+
+    // 게시글 좋아요 토글
+    @PostMapping("/{postId}/like")
+    public ResponseEntity<PostLikeResponse> toggleLike(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String email = userDetails.getUsername(); // 로그인한 유저의 이메일
+        PostLikeResponse response = boardService.toggleLike(postId, email);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // 게시글 좋아요 상태 조회
+    @GetMapping("/{postId}/like")
+    public ResponseEntity<Map<String, Object>> getLikeStatus(
+            @PathVariable Long postId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        final String email = (userDetails != null) ? userDetails.getUsername() : null;
+        Map<String, Object> likeStatus = boardService.getLikeStatus(postId, email);
+        return ResponseEntity.ok(likeStatus);
     }
 }

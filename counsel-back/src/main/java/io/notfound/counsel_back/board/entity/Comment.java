@@ -30,6 +30,7 @@ public class Comment {
     private Post post;
 
     @Column(nullable = false)
+    @Builder.Default
     @ColumnDefault("false") // 기본값은 false
     private boolean isBlinded = false;
 

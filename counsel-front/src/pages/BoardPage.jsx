@@ -26,9 +26,9 @@ export default function BoardPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // 번호 버튼 배열 (최대 7개 표시)
+  // 번호 버튼 배열 (최대 5개 표시)
   const pageButtons = useMemo(() => {
-    const maxButtons = 7;
+    const maxButtons = 5;
     const pages = totalPages || 1;
     const current = page; // 0-based
     const start = Math.max(
