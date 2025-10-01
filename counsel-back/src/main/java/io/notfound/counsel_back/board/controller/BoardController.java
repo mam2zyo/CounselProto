@@ -1,5 +1,6 @@
 package io.notfound.counsel_back.board.controller;
 
+import io.notfound.counsel_back.board.dto.PostLikeResponse;
 import io.notfound.counsel_back.board.dto.PostRequest;
 import io.notfound.counsel_back.board.dto.PostResponse;
 import io.notfound.counsel_back.board.dto.PostUpdateRequest;
@@ -132,7 +133,7 @@ public class BoardController {
 
     // 게시글 좋아요 토글
     @PostMapping("/{postId}/like")
-    public ResponseEntity<Void> toggleLike(
+    public ResponseEntity<PostLikeResponse> toggleLike(
             @PathVariable Long postId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
@@ -141,9 +142,9 @@ public class BoardController {
         }
 
         String email = userDetails.getUsername(); // 로그인한 유저의 이메일
-        boardService.toggleLike(postId, email); // 좋아요 토글 서비스 호출
+        PostLikeResponse response = boardService.toggleLike(postId, email);
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(response);
     }
 
     // 게시글 좋아요 상태 조회

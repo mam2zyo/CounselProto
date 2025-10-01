@@ -1,5 +1,6 @@
 package io.notfound.counsel_back.board.service;
 
+import io.notfound.counsel_back.board.dto.PostLikeResponse;
 import io.notfound.counsel_back.board.dto.PostRequest;
 import io.notfound.counsel_back.board.dto.PostResponse;
 import io.notfound.counsel_back.board.dto.PostUpdateRequest;
@@ -240,7 +241,7 @@ public class BoardService {
 
     // 게시글 좋아요 토글
     @Transactional
-    public void toggleLike(Long postId, String email) {
+    public PostLikeResponse toggleLike(Long postId, String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new PostNotFoundException("사용자를 찾을 수 없습니다: " + email));
 
@@ -253,15 +254,19 @@ public class BoardService {
             postLikeRepository.deleteByPostAndUser(post, user);
             post.decreaseLikeCount(); // 좋아요 수 감소
         } else {
-            // 좋아요를 눌렀다면 좋아요 추가
+            // 아니라면 좋아요 추가
             postLikeRepository.save(PostLike.builder()
                     .post(post)
                     .user(user)
                     .build());
-            post.increaseLikeCount(); // 좋아요 수 증가
+            post.increaseLikeCount();
         }
+        Post savedPost = postRepository.save(post);
 
-        postRepository.save(post);  // 변경된 좋아요 수 저장
+        return PostLikeResponse.builder()
+                .liked(!exists)
+                .likeCount(savedPost.getLikeCount())
+                .build();
     }
 
     /** 게시글 좋아요 상태 가져오기 */
