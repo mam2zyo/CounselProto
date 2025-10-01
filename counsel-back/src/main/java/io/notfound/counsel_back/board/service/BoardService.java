@@ -25,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -198,6 +197,7 @@ public class BoardService {
             }
         }
 
+        // 3) 게시글 삭제 (attachments/comments 는 cascade + orphanRemoval 가정)
         postRepository.delete(post);
     }
 
